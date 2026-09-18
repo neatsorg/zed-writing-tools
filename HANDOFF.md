@@ -121,6 +121,111 @@ Zed.log で確認できた実績:
 正常系・異常系（配布物を退避した状態での再実行）を検証済み：異常系では既存の配置がそのまま
 残ることを確認した。
 
+2026-09-19: 開発順序 5・6（本格校正の接続）に進むにあたり、設計変更に合意した。
+元の合意「Zed 拡張ひとつ＋独自 LSP サーバーひとつ」を、変換拡張・校正拡張を独立して
+リリースしたい方針を受けて「機能ごとに Zed 拡張を分ける（変換拡張／校正拡張）、
+共通サーバー実装は共有するが起動プロセスは拡張ごとに分かれる」に変更する。
+「機能ごとに別のサーバー実装を持たない」という元の合意の核は維持する。
+方針の詳細（構成、暫定の言語サーバー ID、`create-server.js` への機能サブセット注入、
+textlint 接続で確認すべき点）は `docs/architecture.md` に記録した。今回は方針の文書化のみで、
+実装（拡張の分割、textlint 接続）はまだ着手していない。
+
+2026-09-19: ユーザーの提案順（ルール調査 → 拡張分割 → textlint 接続）に沿って、まず
+textlint 接続のための調査を実施した。詳細データは `docs/textlint-research.md`、結論は
+`docs/architecture.md` の開発順序 6 に反映済み。要点：
+
+- 元拡張の依存（textlint、preset-japanese、preset-jtf-style、prh、ICS MEDIA 辞書）は
+  すべて MIT。初回は npm 公開・MIT・「誤検知が少ないルールに限定」を明言する
+  `textlint` ＋ `textlint-rule-preset-japanese` のみを採用し、jtf-style・prh・
+  ICS MEDIA 辞書（npm 未公開）は見送る。
+- textlint の指摘位置は UTF-16 ではなく **Unicode コードポイント単位**だった
+  （絵文字で実測確認）。校正エンジン側でコードポイント→UTF-16 のオフセット変換が必須。
+- `preset-japanese` の 12 ルール中 5 つ（文単位で解析するもの）は文書サイズに対して
+  超線形に遅くなり、5 つ合計で 30000 字あたり約 2 秒。`lintText` 実行中は Node.js の
+  イベントループが完全にブロックされ、キャンセル手段も無い。
+- 対策として、文字数（UTF-16 コードユニット数）が 30000 字を超えたら重い 5 ルールを
+  スキップする方針をユーザーと合意（実務上の校正対象は数千字程度が多いため、
+  最悪ケース＝2 秒のブロッキングは許容する）。
+
+次は拡張分割（変換用・校正用に ID を分け、`extension.toml` と起動エントリーポイントを
+用意する）と、校正エンジンの実装（`textlint` 接続、位置変換、サイズ上限）に進む。
+
+2026-09-19: 拡張分割を実装した。
+- `extension-proofreading/`（ID: `text-tools-proofreading`、Cargo crate 名
+  `zed-text-tools-proofreading`）を新設。`extension/src/lib.rs` と同じ自動解決ロジック
+  （`node_binary_path()` ＋作業ディレクトリ内のバージョン付き配布物）だが、配布物ディレクトリ名を
+  `text-tools-proofreading-server` に分け、`src/lsp/proofreading-server.js` を指す。
+- `src/features.js` を `src/features/conversion.js`（`transformations`）と
+  `src/features/proofreading.js`（`inspections`。今はまだ空）に分割。
+  `src/lsp/server.js`（変換拡張のエントリーポイント）は `conversion.js` からのみ
+  `transformations` を渡し（`inspections: []`）、校正エンジン（textlint）を import しない。
+  新設した `src/lsp/proofreading-server.js` は `proofreading.js` から `inspections` を渡し
+  （`transformations: []`）、変換の Code Action を提供しない。
+- `test/fixtures/test-server.js` の import 元を `features/conversion.js` に更新。
+- `.gitignore` に `extension-proofreading/target/`・`extension-proofreading/extension.wasm` を追加。
+
+検証: `npm test` 8 テストすべて成功（既存の変換 E2E テストも壊れていない）。
+`cargo build --manifest-path extension-proofreading/Cargo.toml --target wasm32-wasip2 --release`
+成功。`proofreading-server.js` を単体でスモークテストし、initialize に正常応答、Code Action が
+0 件（`transformations` を渡していないため）であることを確認。**実機での確認、
+両拡張の同時導入確認はまだ未実施。**
+
+サーバー配布物の生成・配置スクリプト（`scripts/build-server-dist.js`／`deploy-server-dev.js`）は
+まだ変換用のみに対応しており、校正用への対応は次の textlint 接続の実装で行う。
+
+2026-09-19: 拡張分割を動作確認先の Zed GUI で実機確認した。`extension-proofreading/` の
+`zed: install dev extension` を実行し、Rust のコンパイルが成功（Zed.log で確認）、
+`.txt` を開くと想定通り「サーバー配布物が見つかりません（.../text-tools-proofreading/
+text-tools-proofreading-server/CURRENT_VERSION）。校正用の配布物を生成・配置してください。」
+で失敗した（配布物をまだ作っていないため、この失敗は正しい）。既存の変換拡張
+（`text-tools`）は校正拡張のインストール後も引き続き正常に起動していることを Zed.log で確認。
+拡張 ID の分離・作業ディレクトリの分離・Rust ビルドが実機で機能することを確認できたので、
+次に校正エンジン本体（textlint 接続）の実装に進んだ。
+
+2026-09-19: 校正エンジン（`src/engines/proofread.js`）を実装した。
+- textlint の `loadTextlintrc({})`（設定ファイル無し、ビルトインの `.txt` 対応プラグインのみ）に
+  `textlint-rule-preset-japanese` のルールを `descriptor.shallowMerge()` でプログラム的に追加する
+  方式を採用（`.textlintrc.json` ファイルを配布物に含める必要がない）。
+- 文書サイズ（`text.length`、UTF-16 コードユニット数）が 30000 字を超える場合、重い 5 ルールを
+  含まない descriptor に切り替える。2 種類の linter を初回検査時に一度だけ構築してキャッシュする。
+- コードポイント位置 → UTF-16 オフセットの変換表を検査ごとに構築して `message.range` を変換する。
+- `src/features/proofreading.js` の `inspections` に登録。
+- `src/lsp/server.js`（変換拡張）は `src/features/conversion.js` からのみ import するため、
+  textlint 系の依存を読み込まない。
+
+自動テスト（`test/proofread.test.js`）: 位置変換（絵文字を挟んだ位置での正確性）、
+サイズ上限での重いルールのスキップ、`proofreading-server.js` を spawn した E2E
+（診断が届くこと、変換の Code Action を提供しないこと）を追加。ローカル・動作確認先とも
+`node --test test/*.test.js` 11 テストすべて成功。
+
+`scripts/build-server-dist.js`／`scripts/deploy-server-dev.js` を対象別（`conversion`／
+`proofreading`）に対応させた。共通の定義は新設した `scripts/targets.js` に集約
+（拡張 ID・配布物ディレクトリ名・エントリーポイント・依存パッケージ一覧）。
+`npm ci` は package.json の dependencies に無い依存はインストールしないため、対象ごとに
+依存を絞った package.json を書き、ルートの package-lock.json はそのまま使う方式を確認して採用。
+
+校正用配布物は 242 パッケージ・約 101MB（変換用は 1.9MB）。最大の要因は
+`kuromoji`（形態素解析辞書、40MB）で、`no-mix-dearu-desumasu` ルールが使う。
+サイズの最適化は今回のスコープ外。
+
+ライセンス処理: 85 個の依存が LICENSE ファイルを同梱していなかった（remark/mdast/micromark 系、
+kuromoji、sindresorhus 氏や wooorm 氏の多数のユーティリティなど）。1 件ずつ `KNOWN_LICENSE_TEXTS`
+に登録する方式は非現実的と判断し、`package.json` の SPDX ライセンス識別子（`license` フィールド、
+古い `licenses` 配列形式も対応）から `scripts/license-texts/`（MIT・Apache-2.0・BSD-2/3-Clause・
+CC0-1.0・CC-BY-3.0・ISC・WTFPL・BlueOak-1.0.0・Python-2.0、SPDX 公式テキストをそのまま保存）の
+標準テキストを補う方式に変更した。著作権者は `author`／`contributors`／`repository` から推定する。
+未知の SPDX 識別子（テンプレート未用意）は今まで通りビルドを失敗させる。
+
+配布物単体でのスモークテスト（校正用）: `proofreading-server.js` を直接起動し、initialize・
+Code Action（0 件）・診断配信（ら抜き言葉検出、`source: "text-tools"`）を確認。
+
+2026-09-19: 動作確認先の Zed GUI で確認済み（成功）。校正拡張の配布物を配置し、Zed 設定に
+`text-tools-proofreading` を追加（`initialization_options.diagnostics.enabled: true`、
+`languages."Plain Text".language_servers` に追加）した上で言語サーバーを再起動し、
+`examples/proofread.txt` の指摘（ら抜き言葉・二重否定）が表示されることを確認。
+配布物の依存構成を対象別に絞り込む方式へ変更した後の変換拡張（`width.txt`）の動作も
+問題なく確認済み。開発順序 5・6（拡張分割・textlint 接続）は完成範囲を満たした。
+
 以下は元のハンドオフより優先する、開発開始後の合意と状況です。
 
 - 動作確認先は Linux の多言語対応版 Zed 1.20.2。接続情報と設置先は Git 対象外の `DEVELOPMENT.local.md` に記録。

@@ -1,6 +1,8 @@
 node_modules/
 extension/target/
 extension/extension.wasm
+extension-proofreading/target/
+extension-proofreading/extension.wasm
 dist/
 .agents/
 .codex/

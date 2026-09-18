@@ -12,7 +12,10 @@
     "deploy:server-dev": "node scripts/deploy-server-dev.js"
   },
   "dependencies": {
+    "@textlint/module-interop": "15.8.0",
     "jaconv": "1.1.2",
+    "textlint": "15.8.0",
+    "textlint-rule-preset-japanese": "10.0.4",
     "vscode-languageserver": "9.0.1",
     "vscode-languageserver-textdocument": "1.0.12"
   }

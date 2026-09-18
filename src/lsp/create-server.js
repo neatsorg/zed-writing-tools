@@ -4,7 +4,8 @@ import { makeEdit, selectedText } from './actions.js';
 import { createDiagnostics } from './diagnostics.js';
 
 // transformations・inspections を注入して LSP サーバーを構築する。
-// 本体（server.js）は features.js の内容を渡すだけの薄いエントリーポイント。
+// 変換拡張・校正拡張の各エントリーポイント（src/lsp/server.js・src/lsp/proofreading-server.js）
+// は、それぞれ src/features/ の対応するモジュールから必要な機能だけを渡す薄いラッパー。
 // テストは、本格校正エンジン接続前でも診断と変換の両立を検証できるよう、
 // ここへダミーの inspections を渡した別のエントリーポイントから使う。
 export function createServer({ transformations, inspections }) {

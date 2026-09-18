@@ -4,15 +4,13 @@ import {
   toFullwidthDigit, toHalfwidthDigit,
   toFullwidthSymbol, toHalfwidthSymbol,
   toFullwidthKana, toHalfwidthKana,
-} from './engines/width.js';
-import { toHiragana, toKatakana } from './engines/kana.js';
+} from '../engines/width.js';
+import { toHiragana, toKatakana } from '../engines/kana.js';
 
-// 本格校正エンジン（textlint 接続）が入るまでは空。
-// server.js は inspections が空の間、diagnostics.enabled 設定を無視する。
-export const inspections = [];
-
-// Composition root. The LSP adapter only knows this string-to-string contract.
-// Future asynchronous providers may accept an AbortSignal as a second argument.
+// Composition root for the conversion extension. The LSP adapter only knows this
+// string-to-string contract. Future asynchronous providers may accept an AbortSignal
+// as a second argument. Must not import the proofreading engine (textlint), so the
+// conversion extension never loads that dependency.
 export const transformations = [
   { id: 'width.full.alphanumeric', title: '英数字を全角に変換', transform: toFullwidthAlphanumeric },
   { id: 'width.half.alphanumeric', title: '英数字を半角に変換', transform: toHalfwidthAlphanumeric },
