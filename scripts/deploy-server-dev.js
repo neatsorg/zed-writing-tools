@@ -1,4 +1,4 @@
-import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, cp, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -29,14 +29,35 @@ const projectRoot = fileURLToPath(new URL('..', import.meta.url));
 const packageJson = JSON.parse(await readFile(path.join(projectRoot, 'package.json'), 'utf8'));
 const version = packageJson.version;
 const sourceDir = path.join(projectRoot, 'dist', SERVER_DIST_DIR, version);
+const serverEntry = path.join('src', 'lsp', 'server.js');
+
+// コピー元にサーバー本体が無ければ、稼働中の配置には一切触れずに失敗させる。
+await access(path.join(sourceDir, serverEntry)).catch(() => {
+  throw new Error(
+    `配布物が見つかりません（${path.join(sourceDir, serverEntry)}）。` +
+      '先に `npm run build:server-dist` を実行してください。',
+  );
+});
 
 const workDir = path.join(zedExtensionsWorkDir(), EXTENSION_ID);
-const targetDir = path.join(workDir, SERVER_DIST_DIR, version);
+const distRoot = path.join(workDir, SERVER_DIST_DIR);
+const targetDir = path.join(distRoot, version);
+const stagingDir = path.join(distRoot, `.staging-${version}`);
 
-await mkdir(workDir, { recursive: true });
+await mkdir(distRoot, { recursive: true });
+await rm(stagingDir, { recursive: true, force: true }); // 前回失敗時の残骸を掃除
+try {
+  await cp(sourceDir, stagingDir, { recursive: true });
+  // コピーした内容がサーバー本体を含むことを確認できてから、既存版の置き換えに進む。
+  await access(path.join(stagingDir, serverEntry));
+} catch (error) {
+  await rm(stagingDir, { recursive: true, force: true });
+  throw error;
+}
+
 await rm(targetDir, { recursive: true, force: true });
-await cp(sourceDir, targetDir, { recursive: true });
-await writeFile(path.join(workDir, SERVER_DIST_DIR, 'CURRENT_VERSION'), version + '\n');
+await rename(stagingDir, targetDir);
+await writeFile(path.join(distRoot, 'CURRENT_VERSION'), version + '\n');
 
 console.log(`Deployed text-tools-server@${version} to ${targetDir}`);
 console.log('Zed で言語サーバーを再起動してください（コマンドパレット: zed: restart language server）。');
