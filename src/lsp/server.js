@@ -1,16 +1,28 @@
 import { createConnection, TextDocuments, TextDocumentSyncKind, ResponseError, LSPErrorCodes } from 'vscode-languageserver/node.js';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { transformations } from '../features.js';
+import { transformations, inspections } from '../features.js';
 import { makeEdit, selectedText } from './actions.js';
+import { createDiagnostics } from './diagnostics.js';
 
 const connection = createConnection();
 const documents = new TextDocuments(TextDocument);
 let enabled = true;
 let versionedEdits = false;
 let lazyEdits = false;
+let diagnostics;
 
 connection.onInitialize(params => {
   enabled = params.initializationOptions?.conversion !== false;
+  const options = params.initializationOptions?.diagnostics;
+  if (options?.enabled === true) {
+    const word = typeof options.word === 'string' && options.word.length > 0 ? options.word : '要確認';
+    diagnostics = createDiagnostics({
+      documents,
+      publish: params => connection.sendDiagnostics(params),
+      inspect: (text, signal) => inspections[0].inspect(text, word, signal),
+      onError: message => connection.console.error(message),
+    });
+  }
   versionedEdits = params.capabilities.workspace?.workspaceEdit?.documentChanges === true;
   lazyEdits = params.capabilities.textDocument?.codeAction?.resolveSupport?.properties?.includes('edit') === true;
   return { capabilities: {
@@ -56,5 +68,8 @@ async function resolveAction(action, token) {
 }
 
 connection.onCodeActionResolve(resolveAction);
+documents.onDidChangeContent(({ document }) => diagnostics?.schedule(document));
+documents.onDidClose(({ document }) => diagnostics?.close(document.uri));
+connection.onShutdown(() => diagnostics?.dispose());
 documents.listen(connection);
 connection.listen();

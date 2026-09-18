@@ -1,4 +1,7 @@
 import { toFullwidthAlphanumeric, toHalfwidthAlphanumeric } from './engines/width.js';
+import { checkWord } from './engines/check-word.js';
+
+export const inspections = [{ id: 'demo.word', inspect: checkWord }];
 
 // Composition root. The LSP adapter only knows this string-to-string contract.
 // Future asynchronous providers may accept an AbortSignal as a second argument.

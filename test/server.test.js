@@ -15,10 +15,21 @@ test('stdio LSP: unsaved incremental edits, UTF-16 positions and stale action re
   let errors = '';
   child.stderr.on('data', chunk => { errors += chunk; });
   const rpc = createMessageConnection(new StreamMessageReader(child.stdout), new StreamMessageWriter(child.stdin));
+  const publications = [];
+  rpc.onNotification('textDocument/publishDiagnostics', params => publications.push(params));
+  async function nextDiagnostics(version) {
+    for (let i = 0; i < 200; i++) {
+      const result = publications.find(item => item.version === version);
+      if (result) return result;
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    assert.fail('diagnostics not received');
+  }
   rpc.listen();
   t.after(() => { rpc.dispose(); child.kill(); assert.equal(errors, ''); });
   const initialized = await rpc.sendRequest('initialize', {
     processId: process.pid, rootUri: null,
+    initializationOptions: { diagnostics: { enabled: true } },
     capabilities: {
       general: { positionEncodings: ['utf-8', 'utf-16'] },
       workspace: { workspaceEdit: { documentChanges: true } },
@@ -51,6 +62,17 @@ test('stdio LSP: unsaved incremental edits, UTF-16 positions and stale action re
   assert.deepEqual(await rpc.sendRequest('textDocument/codeAction', { ...params, range: { start: range.start, end: range.start } }), []);
   assert.deepEqual(await rpc.sendRequest('textDocument/codeAction', { ...params, range: { start: { line: 0, character: 3 }, end: range.end } }), []);
   assert.deepEqual(await rpc.sendRequest('textDocument/codeAction', { ...params, context: { diagnostics: [], only: ['quickfix'] } }), []);
+  await rpc.sendNotification('textDocument/didChange', {
+    textDocument: { uri, version: 3 }, contentChanges: [{ text: '日本😀e\u0301\r\n次の要確認 ABC' }],
+  });
+  const diagnosis = await nextDiagnostics(3);
+  assert.equal(diagnosis.diagnostics.length, 1);
+  assert.equal(diagnosis.diagnostics[0].severity, 3);
+  assert.deepEqual(diagnosis.diagnostics[0].range, { start: { line: 1, character: 2 }, end: { line: 1, character: 5 } });
+  await rpc.sendNotification('textDocument/didChange', {
+    textDocument: { uri, version: 4 }, contentChanges: [{ text: '日本😀e\u0301\r\n次の確認済 ABC' }],
+  });
+  assert.deepEqual((await nextDiagnostics(4)).diagnostics, []);
   await rpc.sendNotification('textDocument/didClose', { textDocument: { uri } });
   assert.deepEqual(await rpc.sendRequest('textDocument/codeAction', params), []);
   await rpc.sendRequest('shutdown');
