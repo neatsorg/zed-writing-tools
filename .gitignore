@@ -1,0 +1,12 @@
+node_modules/
+extension/target/
+extension/extension.wasm
+.agents/
+.codex/
+*.log
+.DS_Store
+.env
+.env.*
+!.env.example
+*.local.md
+examples/.zed/settings.json

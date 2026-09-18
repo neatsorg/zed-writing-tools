@@ -1,0 +1,10 @@
+id = "text-tools"
+name = "Text Tools"
+version = "0.1.0"
+schema_version = 1
+authors = []
+description = "Japanese text transformations via a shared language server"
+
+[language_servers.text-tools]
+name = "Text Tools"
+languages = ["Plain Text"]

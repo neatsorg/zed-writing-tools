@@ -1,0 +1,9 @@
+{
+  "name": "zed-text-tools-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": { "start": "node src/lsp/server.js --stdio", "test": "node --test", "setup:example": "node scripts/setup-example.js" },
+  "dependencies": { "vscode-languageserver": "9.0.1", "vscode-languageserver-textdocument": "1.0.12" }
+}
