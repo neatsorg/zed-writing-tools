@@ -1,6 +1,7 @@
 node_modules/
 extension/target/
 extension/extension.wasm
+dist/
 .agents/
 .codex/
 *.log

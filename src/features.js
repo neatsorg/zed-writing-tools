@@ -6,9 +6,10 @@ import {
   toFullwidthKana, toHalfwidthKana,
 } from './engines/width.js';
 import { toHiragana, toKatakana } from './engines/kana.js';
-import { checkWord } from './engines/check-word.js';
 
-export const inspections = [{ id: 'demo.word', inspect: checkWord }];
+// 本格校正エンジン（textlint 接続）が入るまでは空。
+// server.js は inspections が空の間、diagnostics.enabled 設定を無視する。
+export const inspections = [];
 
 // Composition root. The LSP adapter only knows this string-to-string contract.
 // Future asynchronous providers may accept an AbortSignal as a second argument.

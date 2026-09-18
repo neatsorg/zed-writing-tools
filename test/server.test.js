@@ -12,8 +12,8 @@ import {
 import { toHiragana, toKatakana } from '../src/engines/kana.js';
 
 test('width conversion preserves non-target characters and round trips ASCII alphanumerics', () => {
-  const untouched = ' 日本語 😀 e\u0301 ｶﾞ ガ ① ㍑ !？\r\n';
-  assert.equal(toFullwidthAlphanumeric('Az09' + untouched), 'Ａｚ０９ 日本語 😀 ｅ\u0301 ｶﾞ ガ ① ㍑ !？\r\n');
+  const untouched = ' 日本語 😀 é ｶﾞ ガ ① ㍑ !？\r\n';
+  assert.equal(toFullwidthAlphanumeric('Az09' + untouched), 'Ａｚ０９ 日本語 😀 ｅ́ ｶﾞ ガ ① ㍑ !？\r\n');
   assert.equal(toHalfwidthAlphanumeric(toFullwidthAlphanumeric('Az09' + untouched)), 'Az09' + untouched);
 });
 
@@ -50,6 +50,55 @@ test('stdio LSP: unsaved incremental edits, UTF-16 positions and stale action re
   let errors = '';
   child.stderr.on('data', chunk => { errors += chunk; });
   const rpc = createMessageConnection(new StreamMessageReader(child.stdout), new StreamMessageWriter(child.stdin));
+  rpc.listen();
+  t.after(() => { rpc.dispose(); child.kill(); assert.equal(errors, ''); });
+  const initialized = await rpc.sendRequest('initialize', {
+    processId: process.pid, rootUri: null,
+    capabilities: {
+      general: { positionEncodings: ['utf-8', 'utf-16'] },
+      workspace: { workspaceEdit: { documentChanges: true } },
+      textDocument: { codeAction: { resolveSupport: { properties: ['edit'] } } },
+    },
+  });
+  assert.equal(initialized.capabilities.positionEncoding, 'utf-16');
+  await rpc.sendNotification('initialized', {});
+  const uri = 'file:///tmp/text-tools-test.txt';
+  const text = '日本😀é ABC09 終\r\n次の行';
+  await rpc.sendNotification('textDocument/didOpen', { textDocument: { uri, languageId: 'plaintext', version: 1, text } });
+  const range = { start: { line: 0, character: 7 }, end: { line: 0, character: 12 } };
+  const params = { textDocument: { uri }, range, context: { diagnostics: [] } };
+  const actions = await rpc.sendRequest('textDocument/codeAction', params);
+  assert.equal(actions.length, 12);
+  assert.equal(actions[0].edit, undefined);
+  const resolved = await rpc.sendRequest('codeAction/resolve', actions[0]);
+  const change = resolved.edit.documentChanges[0];
+  assert.equal(change.textDocument.version, 1);
+  assert.deepEqual(change.edits, [{ range, newText: 'ＡＢＣ０９' }]);
+  assert.equal(text.slice(0, 7) + change.edits[0].newText + text.slice(12), '日本😀é ＡＢＣ０９ 終\r\n次の行');
+  await rpc.sendNotification('textDocument/didChange', {
+    textDocument: { uri, version: 2 }, contentChanges: [{ range, text: 'XYZ12' }],
+  });
+  await assert.rejects(rpc.sendRequest('codeAction/resolve', actions[0]), error => error.code === -32801);
+  const updated = await rpc.sendRequest('textDocument/codeAction', params);
+  const result = await rpc.sendRequest('codeAction/resolve', updated[0]);
+  assert.equal(result.edit.documentChanges[0].edits[0].newText, 'ＸＹＺ１２');
+  assert.equal(result.edit.documentChanges[0].textDocument.version, 2);
+  assert.deepEqual(await rpc.sendRequest('textDocument/codeAction', { ...params, range: { start: range.start, end: range.start } }), []);
+  assert.deepEqual(await rpc.sendRequest('textDocument/codeAction', { ...params, range: { start: { line: 0, character: 3 }, end: range.end } }), []);
+  assert.deepEqual(await rpc.sendRequest('textDocument/codeAction', { ...params, context: { diagnostics: [], only: ['quickfix'] } }), []);
+  await rpc.sendNotification('textDocument/didClose', { textDocument: { uri } });
+  assert.deepEqual(await rpc.sendRequest('textDocument/codeAction', params), []);
+  await rpc.sendRequest('shutdown');
+  await rpc.sendNotification('exit');
+});
+
+test('stdio LSP: diagnostics and conversion coexist via a test-only inspection engine', { timeout: 10000 }, async t => {
+  // create-server.js に渡す inspections はテスト用のダミー（test/fixtures/）。
+  // 本格校正エンジン接続前でも、diagnostics.js の接続を変換と一緒に検証する。
+  const child = spawn(process.execPath, ['test/fixtures/test-server.js', '--stdio']);
+  let errors = '';
+  child.stderr.on('data', chunk => { errors += chunk; });
+  const rpc = createMessageConnection(new StreamMessageReader(child.stdout), new StreamMessageWriter(child.stdin));
   const publications = [];
   rpc.onNotification('textDocument/publishDiagnostics', params => publications.push(params));
   async function nextDiagnostics(version) {
@@ -62,7 +111,7 @@ test('stdio LSP: unsaved incremental edits, UTF-16 positions and stale action re
   }
   rpc.listen();
   t.after(() => { rpc.dispose(); child.kill(); assert.equal(errors, ''); });
-  const initialized = await rpc.sendRequest('initialize', {
+  await rpc.sendRequest('initialize', {
     processId: process.pid, rootUri: null,
     initializationOptions: { diagnostics: { enabled: true } },
     capabilities: {
@@ -71,45 +120,28 @@ test('stdio LSP: unsaved incremental edits, UTF-16 positions and stale action re
       textDocument: { codeAction: { resolveSupport: { properties: ['edit'] } } },
     },
   });
-  assert.equal(initialized.capabilities.positionEncoding, 'utf-16');
   await rpc.sendNotification('initialized', {});
-  const uri = 'file:///tmp/text-tools-test.txt';
-  const text = '日本😀e\u0301 ABC09 終\r\n次の行';
-  await rpc.sendNotification('textDocument/didOpen', { textDocument: { uri, languageId: 'plaintext', version: 1, text } });
-  const range = { start: { line: 0, character: 7 }, end: { line: 0, character: 12 } };
-  const params = { textDocument: { uri }, range, context: { diagnostics: [] } };
-  const actions = await rpc.sendRequest('textDocument/codeAction', params);
+  const uri = 'file:///tmp/text-tools-diagnostics-test.txt';
+  await rpc.sendNotification('textDocument/didOpen', {
+    textDocument: { uri, languageId: 'plaintext', version: 1, text: '日本😀é\r\n次の行' },
+  });
+  const range = { start: { line: 1, character: 0 }, end: { line: 1, character: 1 } };
+  const actions = await rpc.sendRequest('textDocument/codeAction', {
+    textDocument: { uri }, range, context: { diagnostics: [] },
+  });
   assert.equal(actions.length, 12);
-  assert.equal(actions[0].edit, undefined);
-  const resolved = await rpc.sendRequest('codeAction/resolve', actions[0]);
-  const change = resolved.edit.documentChanges[0];
-  assert.equal(change.textDocument.version, 1);
-  assert.deepEqual(change.edits, [{ range, newText: 'ＡＢＣ０９' }]);
-  assert.equal(text.slice(0, 7) + change.edits[0].newText + text.slice(12), '日本😀e\u0301 ＡＢＣ０９ 終\r\n次の行');
   await rpc.sendNotification('textDocument/didChange', {
-    textDocument: { uri, version: 2 }, contentChanges: [{ range, text: 'XYZ12' }],
+    textDocument: { uri, version: 2 }, contentChanges: [{ text: '日本😀é\r\n次の要確認 ABC' }],
   });
-  await assert.rejects(rpc.sendRequest('codeAction/resolve', actions[0]), error => error.code === -32801);
-  const updated = await rpc.sendRequest('textDocument/codeAction', params);
-  const result = await rpc.sendRequest('codeAction/resolve', updated[0]);
-  assert.equal(result.edit.documentChanges[0].edits[0].newText, 'ＸＹＺ１２');
-  assert.equal(result.edit.documentChanges[0].textDocument.version, 2);
-  assert.deepEqual(await rpc.sendRequest('textDocument/codeAction', { ...params, range: { start: range.start, end: range.start } }), []);
-  assert.deepEqual(await rpc.sendRequest('textDocument/codeAction', { ...params, range: { start: { line: 0, character: 3 }, end: range.end } }), []);
-  assert.deepEqual(await rpc.sendRequest('textDocument/codeAction', { ...params, context: { diagnostics: [], only: ['quickfix'] } }), []);
-  await rpc.sendNotification('textDocument/didChange', {
-    textDocument: { uri, version: 3 }, contentChanges: [{ text: '日本😀e\u0301\r\n次の要確認 ABC' }],
-  });
-  const diagnosis = await nextDiagnostics(3);
+  const diagnosis = await nextDiagnostics(2);
   assert.equal(diagnosis.diagnostics.length, 1);
   assert.equal(diagnosis.diagnostics[0].severity, 3);
   assert.deepEqual(diagnosis.diagnostics[0].range, { start: { line: 1, character: 2 }, end: { line: 1, character: 5 } });
   await rpc.sendNotification('textDocument/didChange', {
-    textDocument: { uri, version: 4 }, contentChanges: [{ text: '日本😀e\u0301\r\n次の確認済 ABC' }],
+    textDocument: { uri, version: 3 }, contentChanges: [{ text: '日本😀é\r\n次の確認済 ABC' }],
   });
-  assert.deepEqual((await nextDiagnostics(4)).diagnostics, []);
+  assert.deepEqual((await nextDiagnostics(3)).diagnostics, []);
   await rpc.sendNotification('textDocument/didClose', { textDocument: { uri } });
-  assert.deepEqual(await rpc.sendRequest('textDocument/codeAction', params), []);
   await rpc.sendRequest('shutdown');
   await rpc.sendNotification('exit');
 });

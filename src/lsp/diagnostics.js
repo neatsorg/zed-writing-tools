@@ -22,12 +22,12 @@ export function createDiagnostics({ documents, publish, inspect, delay = 200, on
           range: { start: document.positionAt(finding.start), end: document.positionAt(finding.end) },
           message: finding.message,
           severity: DiagnosticSeverity.Information,
-          source: 'text-tools-demo',
+          source: 'text-tools',
         })) });
       } catch {
         if (current()) {
           publish({ uri, version, diagnostics: [] });
-          onError('Text Tools: 検証用の診断に失敗しました。');
+          onError('Text Tools: 診断に失敗しました。');
         }
       } finally { if (jobs.get(uri) === job) jobs.delete(uri); }
     }, delay);

@@ -4,7 +4,13 @@
   "private": true,
   "type": "module",
   "engines": { "node": ">=22" },
-  "scripts": { "start": "node src/lsp/server.js --stdio", "test": "node --test", "setup:example": "node scripts/setup-example.js" },
+  "scripts": {
+    "start": "node src/lsp/server.js --stdio",
+    "test": "node --test test/*.test.js",
+    "setup:example": "node scripts/setup-example.js",
+    "build:server-dist": "node scripts/build-server-dist.js",
+    "deploy:server-dev": "node scripts/deploy-server-dev.js"
+  },
   "dependencies": {
     "jaconv": "1.1.2",
     "vscode-languageserver": "9.0.1",

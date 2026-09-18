@@ -27,6 +27,90 @@ Plain Text で新規作成した無題バッファ（未保存・保存先なし
 `package.json`・`package-lock.json` を再同期し、`npm install --ignore-scripts` を実施済み。
 Zed 拡張（Wasm）側の変更はなし。**GUI での新機能の動作確認はユーザー確認待ち。**
 
+2026-09-19: 開発順序 4（固定パスへの依存解消）に着手。方針をユーザーと確認：
+サーバー配布物（依存ライブラリ込み）は拡張そのものへの同梱ではなく、拡張とは別に
+作成する。開発段階ではローカルで生成・配置、公開後は同じ生成手順を CI で実行し、
+拡張が GitHub Releases から取得・展開する（npm 経由のインストール API も選択肢として
+検討したが、GitHub Releases を採用）。配置先は開発段階・公開後とも拡張の作業ディレクトリ
+（Zed の Wasm 実行環境で `env::current_dir()` が指す場所。実例は
+[zed-extensions/vue](https://github.com/zed-extensions/vue) の `src/vue.rs` で確認）。
+起動は Node 自動解決（`zed_extension_api` の `node_binary_path()`）＋サーバーの絶対パス。
+`lsp.text-tools.binary` の明示設定があれば従来通り優先する。
+
+実装したもの:
+- `extension/src/lib.rs`: 明示設定が無い場合、Node は `node_binary_path()`、サーバーは
+  拡張の作業ディレクトリ配下 `text-tools-server/CURRENT_VERSION` が示すバージョンの
+  `src/lsp/server.js` を絶対パスで解決する。
+- `scripts/build-server-dist.js`: `dist/text-tools-server/<version>/`
+  （package.json・ロックファイル・src・本番依存のみの node_modules・THIRD_PARTY_NOTICES）
+  をローカルに生成。THIRD_PARTY_NOTICES は各依存の LICENSE ファイルを収集し、
+  LICENSE ファイルを持たない既知の依存（vscode-languageserver 系、Microsoft MIT）は
+  ライセンス全文をスクリプト内に保持して補う。未知の依存で LICENSE が見つからない場合は
+  ビルドを失敗させる。
+- `scripts/deploy-server-dev.js`: 生成物を Zed 拡張の作業ディレクトリへ配置し
+  `CURRENT_VERSION` を書き込む（Linux・macOS 対応、Windows は未対応）。
+- `dist/` は Git 対象外（生成スクリプト・ロックファイルは追跡するので再生成できる）。
+
+検証（ローカルと動作確認先の両方）:
+- 配布物単体（`node_modules` を含むそのディレクトリのみ）で LSP サーバーとして
+  initialize・codeAction・resolve が正常応答することを確認。
+- 動作確認先でプロジェクトの `src/` を一時的にリネームしても配布物単体が動作することを確認
+  （元のソース配置先に依存しないことの裏付け）。
+- 動作確認先の Zed 拡張（Wasm）を再ビルド。Zed 設定から `lsp.text-tools.binary` の明示設定を
+  削除（バックアップ済み、`~/.config/zed/settings.json.text-tools-binary-explicit-*.bak`）し、
+  自動解決を検証可能な状態にした。
+- **GUI での自動解決の動作確認、および Zed が選ぶ Node のバージョンが `engines.node >= 22`
+  を満たすことの確認はユーザー確認待ち。** `~/.local/share/zed/node/` にはまだ実体（キャッシュ
+  のみ）が見当たらず、実際に選ばれる Node は未確認。
+
+未実装（公開先が決まった後の作業）: GitHub Releases への配布物アップロード（CI）、
+拡張からのダウンロード・展開処理（`download_file`／`make_file_executable` を使う想定）。
+
+2026-09-19: 開発順序 4 の受け入れ条件を動作確認先の Zed GUI で確認済み。
+`zed: install dev extension` は Zed 自身が Rust をビルドして `extension.wasm` を書き出す
+仕様（`crates/extension/src/extension_builder.rs`）のため、ターミナルでの `cargo build` は
+構文確認にしかならず、コード変更の反映には毎回 Zed 上での再実行が必要（今回そのため一度
+古いエラーが再現した。以後の担当者への注意点として記録）。
+
+Zed.log で確認できた実績:
+- 明示 `binary` 設定を外した状態で、text-tools プロジェクトと無関係な別フォルダを
+  working directory として
+  `args: [".../extensions/work/text-tools/text-tools-server/0.1.0/src/lsp/server.js", "--stdio"]`
+  で正常に起動。元のソース配置先に依存しないことを実機で確認。
+- `binary path: "/usr/bin/node"`（`node_binary_path()` がシステム Node を自動解決）。
+  `node --version` は `v26.8.1` で `package.json` の `engines.node >= 22` を満たす。
+- ユーザーが GUI 上で変換・診断とも成功したことを確認済み。
+
+開発順序 4 は完成範囲を満たした。残るのは未実装（公開先が決まった後の GitHub Releases 化）のみ。
+
+2026-09-19: 変換と固定パス解消が実機確認済みになったのを受け、検証用のダミー診断
+（「要確認」を検出するだけの `demo.word`）を製品コードから外した。ユーザーとの整理方針：
+
+- 残すもの: `src/lsp/diagnostics.js`（検査の集約・古い結果の破棄・診断の消去・失敗時の
+  復帰を扱う LSP アダプター）と、その単体テスト（`test/diagnostics.test.js`）。
+  本格校正エンジン（textlint 接続）でもそのまま再利用する。
+- 外すもの: `src/engines/check-word.js`、`src/features.js` の `demo.word` 登録、
+  `server.js` 側のダミー起動・検証用パラメータ（`diagnostics.word`）の受け渡し、
+  README の有効化手順、`examples/diagnostics.txt`。
+- テスト側に移すもの: 指定語を検出するダミー検査エンジン
+  （`test/fixtures/dummy-inspection.js`）。製品の起動経路には置かない。
+  診断と変換の両立を検証する E2E には価値があるため、製品にテスト用の分岐を
+  追加せずに残す方針とし、`src/lsp/server.js` を薄いエントリーポイントとして分離し、
+  本体（`src/lsp/create-server.js`）に `{ transformations, inspections }` を注入する形に
+  リファクタリングした。テストは `test/fixtures/test-server.js`
+  （`create-server.js` にダミー診断を注入するテスト専用エントリーポイント）を起動する。
+- 表現の整理: `diagnostics.js` 内の `source: 'text-tools-demo'` を `'text-tools'` に、
+  エラーメッセージ「検証用の診断に失敗しました」を「診断に失敗しました」に変更
+  （アダプター自体は削除・テスト専用化していない）。
+
+`inspections` が空の間は、`initialization_options.diagnostics.enabled` を true にしても
+サーバーは何もしない（エラーにはならない）。次の担当者は、本格校正エンジンを
+`src/features.js` の `inspections` に登録するだけで診断が有効になる。
+
+`npm test` は `test/*.test.js` のみを対象にするよう `package.json` を変更した
+（Node.js の `--test` はデフォルトで `test/` 配下の全 `.js` を検索するため、
+`test/fixtures/` のテスト専用スクリプトを誤って実行してしまう問題への対処）。
+
 以下は元のハンドオフより優先する、開発開始後の合意と状況です。
 
 - 動作確認先は Linux の多言語対応版 Zed 1.20.2。接続情報と設置先は Git 対象外の `DEVELOPMENT.local.md` に記録。
