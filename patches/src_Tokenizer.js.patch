@@ -1,0 +1,45 @@
+--- a/src/Tokenizer.js
++++ b/src/Tokenizer.js
+@@ -78,6 +78,13 @@
+     if (tokens == null) {
+         tokens = [];
+     }
++    // Text Tools patch: lattice positions are code points; public positions are UTF-16.
++    var utf16Offsets = [0];
++    var offset = 0;
++    for (var character of sentence) {
++        offset += character.length;
++        utf16Offsets.push(offset);
++    }
+     var lattice = this.getLattice(sentence);
+     var best_path = this.viterbi_searcher.search(lattice);
+     var last_pos = 0;
+@@ -96,7 +103,7 @@
+             } else {
+                 features = features_line.split(",");
+             }
+-            token = this.formatter.formatEntry(node.name, last_pos + node.start_pos, node.type, features);
++            token = this.formatter.formatEntry(node.name, last_pos + utf16Offsets[node.start_pos - 1] + 1, node.type, features);
+         } else if (node.type === "UNKNOWN") {
+             // Unknown word
+             features_line = this.unknown_dictionary.getFeatures(node.name);
+@@ -105,10 +112,10 @@
+             } else {
+                 features = features_line.split(",");
+             }
+-            token = this.formatter.formatUnknownEntry(node.name, last_pos + node.start_pos, node.type, features, node.surface_form);
++            token = this.formatter.formatUnknownEntry(node.name, last_pos + utf16Offsets[node.start_pos - 1] + 1, node.type, features, node.surface_form);
+         } else {
+             // TODO User dictionary
+-            token = this.formatter.formatEntry(node.name, last_pos + node.start_pos, node.type, []);
++            token = this.formatter.formatEntry(node.name, last_pos + utf16Offsets[node.start_pos - 1] + 1, node.type, []);
+         }
+ 
+         tokens.push(token);
+@@ -126,4 +133,6 @@
+     return this.viterbi_builder.build(text);
+ };
+ 
++Tokenizer.textToolsUtf16Patch = 1;
++
+ module.exports = Tokenizer;

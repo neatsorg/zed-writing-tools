@@ -2,6 +2,7 @@ import { cp, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { patchKuromoji } from './patch-kuromoji.js';
 import { TARGETS } from './targets.js';
 
 // サーバー配布物（package.json・ロックファイル・src・本番依存のみの node_modules）を
@@ -148,6 +149,11 @@ await cp(path.join(projectRoot, 'package-lock.json'), path.join(distDir, 'packag
 await cp(path.join(projectRoot, 'src'), path.join(distDir, 'src'), { recursive: true });
 
 execFileSync('npm', ['ci', '--omit=dev', '--ignore-scripts'], { cwd: distDir, stdio: 'inherit' });
+
+if (targetName === 'proofreading') {
+  await patchKuromoji(distDir);
+  await cp(path.join(projectRoot, 'patches'), path.join(distDir, 'patches'), { recursive: true });
+}
 
 const notices = await buildThirdPartyNotices(path.join(distDir, 'node_modules'));
 await writeFile(path.join(distDir, 'THIRD_PARTY_NOTICES'), notices);

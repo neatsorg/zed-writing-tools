@@ -39,13 +39,14 @@ Node.js 22 以降、Rust と `wasm32-wasip2` ターゲットを使用します�
 
 ```sh
 npm ci --ignore-scripts
+npm run patch:deps
 npm test
 cargo build --manifest-path extension/Cargo.toml --target wasm32-wasip2 --release --locked
 ```
 
 ## Zed での動作確認
 
-1. このプロジェクトを任意の場所に置き、`npm ci --ignore-scripts` を実行します。
+1. このプロジェクトを任意の場所に置き、`npm ci --ignore-scripts` と `npm run patch:deps` を実行します。
 2. `npm run setup:example` を実行します。現在の Node.js 実行パスとプロジェクトの
    配置先から、Git 対象外の `examples/.zed/settings.json` を生成します。
    既存ファイルは上書きしません。配置先を移動した場合は、既存設定を退避して再生成してください。
@@ -121,10 +122,15 @@ npm run deploy:server-dev -- proofreading  # 校正拡張の作業ディレク�
 このうち文単位で解析する 5 ルール（max-ten・no-doubled-conjunctive-particle-ga・
 no-doubled-conjunction・no-doubled-joshi・sentence-length）は文書サイズに対して超線形に
 遅くなるため、文書が 30000 字（UTF-16 コードユニット数）を超える場合はスキップします。
-また、kuromoji などの形態素解析・言語解析を使う 7 ルール（上記のうち sentence-length を除く
-4 ルールと、no-double-negative-ja・no-dropping-the-ra・no-mix-dearu-desumasu）は、
-絵文字（サロゲートペア）を含む文書では相対位置の単位が食い違い、指摘位置がズレるため、
-そのような文書ではスキップします（詳細は [調査記録](docs/textlint-research.md)）。
+絵文字や「𠮷」を含む文書でも形態素解析系の 7 ルールを実行します。
+kuromoji 0.1.2 への[固定パッチ](patches/README.md)で、トークン位置を UTF-16 にそろえ、
+連続するサロゲートペアを未知語としてまとめた際の長さ計算も修正しています。
+原文の置換や最終診断位置の一律変換は行いません。
+
+パッチは通常の npm インストール、`npm test`、`npm start` と校正配布物のビルドで適用します。
+`npm ci --ignore-scripts` の直後にサーバーを直接起動する場合は、先に `npm run patch:deps` を
+実行してください。未適用の校正サーバーは説明付きエラーで停止します。
+依存更新で対象バージョンやソースが変わった場合も、自動適用を止めて再確認を求めます。
 
 校正拡張は変換の Code Action を提供しません（`transformations: []`）。逆に変換拡張は
 `inspections: []` で、校正エンジン（textlint）を import しないため依存を読み込みません。

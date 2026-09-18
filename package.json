@@ -11,7 +11,11 @@
     "test": "node --test test/*.test.js",
     "setup:example": "node scripts/setup-example.js",
     "build:server-dist": "node scripts/build-server-dist.js",
-    "deploy:server-dev": "node scripts/deploy-server-dev.js"
+    "deploy:server-dev": "node scripts/deploy-server-dev.js",
+    "patch:deps": "node scripts/patch-kuromoji.js",
+    "postinstall": "npm run patch:deps",
+    "pretest": "npm run patch:deps",
+    "prestart": "npm run patch:deps"
   },
   "dependencies": {
     "@textlint/kernel": "15.8.0",
@@ -21,6 +25,7 @@
     "textlint": "15.8.0",
     "textlint-rule-preset-japanese": "10.0.4",
     "vscode-languageserver": "9.0.1",
-    "vscode-languageserver-textdocument": "1.0.12"
+    "vscode-languageserver-textdocument": "1.0.12",
+    "kuromoji": "0.1.2"
   }
 }

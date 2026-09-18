@@ -1,0 +1,18 @@
+--- a/src/viterbi/ViterbiBuilder.js
++++ b/src/viterbi/ViterbiBuilder.js
+@@ -80,6 +80,8 @@
+                 }
+             }
+ 
++            // Text Tools patch: grouped unknown strings also need code-point lengths.
++            key = new SurrogateAwareString(key.toString());
+             var unk_ids = this.unknown_dictionary.target_map[head_char_class.class_id];
+             for (var j = 0; j < unk_ids.length; j++) {
+                 var unk_id = parseInt(unk_ids[j]);
+@@ -98,4 +100,6 @@
+     return lattice;
+ };
+ 
++ViterbiBuilder.textToolsUtf16Patch = 1;
++
+ module.exports = ViterbiBuilder;

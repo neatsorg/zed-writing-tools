@@ -92,12 +92,11 @@ Zed での日本語執筆を支援する。文字変換・校正・翻訳のエ�
      no-doubled-joshi・no-double-negative-ja・no-dropping-the-ra・no-mix-dearu-desumasu の
      7 ルール）は相対位置を Unicode コードポイント単位で計算し、それが UTF-16 単位の
      ノード開始位置にそのまま加算されるため、絵文字（サロゲートペア）を含む文書で
-     絶対位置がズレる（外部からの正確な補正は、textlint 内部の文分割ロジックの再現が必要で
-     現実的ではないと判断）。校正エンジンは `message.range` を変換せず UTF-16 オフセットの
-     まま使い、上記 7 ルールはサロゲートペアを含む文書ではスキップする
-     （`diagnostics.js` に渡す `{ start, end }` は UTF-16 オフセットで統一する契約のまま。
-     2026-09-19 レビューで初回実装の誤り（コードポイント単位という誤った前提での一律変換）を
-     修正。詳細は `docs/textlint-research.md`）。
+     絶対位置がズレていた。現在は kuromoji 0.1.2 への固定パッチで、ルールに渡す前の
+     トークン位置を UTF-16 にそろえ、連続する未知語の長さ計算も修正する。
+     文書全体の 7 ルールスキップは撤回し、最終 `message.range` は変換しない。
+     パッチはバージョンと適用前後のハッシュで管理し、校正配布物にも適用する。
+     詳細は `patches/README.md` と `docs/textlint-research.md` を参照。
    - **処理時間**: `textlint-rule-preset-japanese` の 12 ルールのうち、文単位で解析する
      5 ルール（`max-ten`・`no-doubled-conjunctive-particle-ga`・`no-doubled-conjunction`・
      `no-doubled-joshi`・`sentence-length`）は文書サイズに対して超線形に遅くなる
@@ -112,7 +111,7 @@ Zed での日本語執筆を支援する。文字変換・校正・翻訳のエ�
      は約 5000 字）。
    - 初回は `.txt` 対象・情報レベルの指摘に絞る。プロジェクトごとの任意ルール読み込みや
      自動修正は、この段階のスコープに含めない（将来の追加機能として扱う）。
-   実装: `src/engines/proofread.js`（サイズ・絵文字の有無に応じたルール切り替え。設定ファイルは
+   実装: `src/engines/proofread.js`（サイズに応じたルール切り替え、位置補正済みの kuromoji を使用。設定ファイルは
    探索しない — `@textlint/kernel` の `TextlintKernelDescriptor` を直接構築し、
    `@textlint/textlint-plugin-text` を明示的にプラグインとして渡す。`textlint` パッケージが
    公開する `loadTextlintrc` は設定探索を行うため使わない）、

@@ -1,11 +1,19 @@
 // textlint（preset-japanese）を使った日本語校正エンジン。
 // LSP や Zed 固有の型は扱わず、{ start, end, message } の UTF-16 オフセット配列（終了位置を
 // 含まない）を返す。診断への変換・集約・古い結果の破棄は src/lsp/diagnostics.js の責務。
+import { createRequire } from 'node:module';
 import { createLinter } from 'textlint';
 import { TextlintKernelDescriptor } from '@textlint/kernel';
 import { moduleInterop } from '@textlint/module-interop';
 import textlintPluginTextModule from '@textlint/textlint-plugin-text';
 import presetJapaneseModule from 'textlint-rule-preset-japanese';
+
+// Direct node launches must not silently use an unpatched installation after --ignore-scripts.
+const require = createRequire(import.meta.url);
+if (require('kuromoji/src/Tokenizer.js').textToolsUtf16Patch !== 1 ||
+    require('kuromoji/src/viterbi/ViterbiBuilder.js').textToolsUtf16Patch !== 1) {
+  throw new Error('Run npm run patch:deps before starting the proofreading server.');
+}
 
 const presetJapanese = moduleInterop(presetJapaneseModule);
 const textlintPluginText = moduleInterop(textlintPluginTextModule);
@@ -22,30 +30,8 @@ const HEAVY_RULES = new Set([
 ]);
 const MAX_CHARS_FOR_HEAVY_RULES = 30000;
 
-// kuromoji などの形態素解析・言語解析ライブラリを使うルール。これらは対象トークンの相対位置
-// （kuromoji の word_position など）を Unicode コードポイント単位で計算しており、それが
-// textlint 本体（UTF-16 単位でノード位置を計算する）に UTF-16 オフセットとしてそのまま加算される
-// ため、絵文字（サロゲートペア）を含む文書では絶対位置がズレる（docs/textlint-research.md 参照）。
-// ノード境界の再現には textlint 内部の文分割ロジックが必要で、外部から正確に補正するのは
-// 現実的ではないため、サロゲートペアを含む文書ではこれらのルールをスキップする。
-const MORPHOLOGICAL_RULES = new Set([
-  'max-ten',
-  'no-doubled-conjunctive-particle-ga',
-  'no-doubled-conjunction',
-  'no-doubled-joshi',
-  'no-double-negative-ja',
-  'no-dropping-the-ra',
-  'no-mix-dearu-desumasu',
-]);
-
-const SURROGATE_PAIR_PATTERN = /[\uD800-\uDBFF][\uDC00-\uDFFF]/;
-
 function selectRuleNames(text) {
-  const withinSizeCap = text.length <= MAX_CHARS_FOR_HEAVY_RULES;
-  const hasSurrogatePair = SURROGATE_PAIR_PATTERN.test(text);
-  return ALL_RULE_NAMES.filter(
-    name => (withinSizeCap || !HEAVY_RULES.has(name)) && (!hasSurrogatePair || !MORPHOLOGICAL_RULES.has(name)),
-  );
+  return ALL_RULE_NAMES.filter(name => text.length <= MAX_CHARS_FOR_HEAVY_RULES || !HEAVY_RULES.has(name));
 }
 
 function buildRules(ruleNames) {
@@ -81,9 +67,7 @@ function getLinterFor(ruleNames) {
   return linter;
 }
 
-// textlint の message.range は、多くのルール（正規表現ベース）では textlint 本体と同じ
-// UTF-16 コードユニット単位だが、形態素解析系ルールは絵文字を含むとズレる（上記参照）。
-// そのため変換はせず、range をそのまま UTF-16 オフセットとして使う。
+// kuromoji の位置補正は依存パッチで行う。textlint の range は UTF-16 のまま返す。
 export async function proofread(text) {
   const linter = getLinterFor(selectRuleNames(text));
   const result = await linter.lintText(text, 'input.txt');

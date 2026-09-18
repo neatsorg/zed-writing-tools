@@ -15,6 +15,7 @@ export const TARGETS = {
     dependencies: [
       'vscode-languageserver', 'vscode-languageserver-textdocument',
       'textlint', 'textlint-rule-preset-japanese', '@textlint/module-interop',
+      '@textlint/kernel', '@textlint/textlint-plugin-text', 'kuromoji',
     ],
   },
 };

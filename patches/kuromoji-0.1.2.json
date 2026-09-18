@@ -1,0 +1,17 @@
+{
+  "version": "0.1.2",
+  "files": [
+    {
+      "path": "src/Tokenizer.js",
+      "patch": "src_Tokenizer.js.patch",
+      "before": "e405439a914626d0ccad22ca34feb8bd673ed00e9c4fd2913f946b6db4247631",
+      "after": "3148bbdb59245c5384027034c80fadf01d45f46e188891d5f0a872a10e259b37"
+    },
+    {
+      "path": "src/viterbi/ViterbiBuilder.js",
+      "patch": "src_viterbi_ViterbiBuilder.js.patch",
+      "before": "3203cba7948536c7c661633b331606151f550d5c970e4e4c1fc2e2b4a1f96b69",
+      "after": "df7ef8c488101b5d575fe5ba37ca32bfb303205bbebd34a33f2ccfe827e1ab0f"
+    }
+  ]
+}
