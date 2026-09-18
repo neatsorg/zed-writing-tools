@@ -226,6 +226,38 @@ Code Action（0 件）・診断配信（ら抜き言葉検出、`source: "text-t
 配布物の依存構成を対象別に絞り込む方式へ変更した後の変換拡張（`width.txt`）の動作も
 問題なく確認済み。開発順序 5・6（拡張分割・textlint 接続）は完成範囲を満たした。
 
+2026-09-19: 上記コミット（`1188ae8`）へのレビューで 3 件の問題が報告され、いずれも対応した。
+詳細は `docs/textlint-research.md` の「レビュー対応」節、要点は次のとおり。
+
+1. **位置ズレ（P1）**: 初回実装は `no-dropping-the-ra` の 1 ルールだけを見て「textlint の
+   `index` は Unicode コードポイント単位」と誤って一般化し、全ルールの結果にコードポイント→
+   UTF-16 変換を一律適用していた。実際には textlint 本体（AST ノード位置）の基本単位は UTF-16
+   で、`preset-japanese` のうち kuromoji 等の形態素解析・言語解析を使う 7 ルール
+   （max-ten・no-doubled-conjunctive-particle-ga・no-doubled-conjunction・no-doubled-joshi・
+   no-double-negative-ja・no-dropping-the-ra・no-mix-dearu-desumasu）だけが、相対位置を
+   コードポイント単位で計算していた。修正: 変換を撤回し `message.range` を UTF-16 のまま使う。
+   上記 7 ルールは、対象文書にサロゲートペア（絵文字）が含まれる場合にスキップする
+   （外部からの正確な補正は textlint 内部の文分割ロジックの再現が必要で現実的ではないと判断）。
+2. **校正拡張が既定で診断しない（P2）**: `create-server.js` の有効化条件を
+   `enabled === true` から `enabled !== false` に変更。`inspections` がある拡張（校正拡張）は
+   既定で有効、明示的な `false` でのみ無効化する。
+3. **プロジェクトの textlint 設定を意図せず読み込む（P2）**: `loadTextlintrc({})` は設定ファイル
+   探索を行うため、LSP サーバーの作業ディレクトリ（開いているプロジェクトのルートになりうる）
+   にある `.textlintrc` のフィルター・プラグインが混入していた。`loadBuiltinPlugins`
+   （設定探索なしでビルトインプラグインだけロードする関数）は `textlint` パッケージの
+   公開エントリーポイントから export されていなかったため、`@textlint/kernel` の
+   `TextlintKernelDescriptor` を直接構築し `@textlint/textlint-plugin-text` を明示的に渡す
+   実装に変更した（両パッケージを依存に追加）。
+
+自動テスト（`test/proofread.test.js`）に、絵文字を挟んだ位置の正確性、形態素解析系ルールの
+スキップ、`.textlintrc` の非依存、診断の既定有効化・明示的な無効化を追加。ローカルで
+`node --test test/*.test.js` 15 テストすべて成功。
+
+動作確認先の Zed GUI で確認済み（成功）。校正拡張の配布物を再ビルド・再配置し、Zed 設定から
+`text-tools-proofreading.initialization_options.diagnostics.enabled: true` の明示を削除
+（バックアップ済み）した状態で言語サーバーを再起動し、`examples/proofread.txt` の指摘が
+設定なしでも表示されることを確認した。開発順序 6 のレビュー対応は完了。
+
 以下は元のハンドオフより優先する、開発開始後の合意と状況です。
 
 - 動作確認先は Linux の多言語対応版 Zed 1.20.2。接続情報と設置先は Git 対象外の `DEVELOPMENT.local.md` に記録。

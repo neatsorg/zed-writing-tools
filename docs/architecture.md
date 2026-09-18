@@ -85,12 +85,19 @@ Zed での日本語執筆を支援する。文字変換・校正・翻訳のエ�
      （npm 公開・MIT・「誤検知が少ないルールに限定し、スタイル系ルールは含めない」という
      方針を明言）のみを依存に追加する。`preset-jtf-style`・`prh`・ICS MEDIA 辞書は
      見送り、将来必要になった段階で追加を検討する。
-   - **位置の対応**: textlint の `message.index`／`range`／`loc.column` は
-     **Unicode コードポイント単位**（絵文字を 1 文字として数える）で、UTF-16 コードユニット
-     単位ではないことを検証で確認した。結合文字は元から 1 コードポイント＝1 コードユニットで
-     影響しないが、絵文字（サロゲートペア）はズレる。校正エンジンはコードポイントオフセット
-     → UTF-16 オフセットへの変換を必ず行う（`diagnostics.js` に渡す `{ start, end }` は
-     UTF-16 オフセットで統一する契約のまま）。
+   - **位置の対応**: textlint 本体（`@textlint/text-to-ast`）の AST ノード位置は
+     **UTF-16 コードユニット単位**（textlint の基本単位）。正規表現ベースのルールはこれと
+     一致するため変換不要だが、`preset-japanese` の一部ルール（kuromoji などの形態素解析・
+     言語解析を使う max-ten・no-doubled-conjunctive-particle-ga・no-doubled-conjunction・
+     no-doubled-joshi・no-double-negative-ja・no-dropping-the-ra・no-mix-dearu-desumasu の
+     7 ルール）は相対位置を Unicode コードポイント単位で計算し、それが UTF-16 単位の
+     ノード開始位置にそのまま加算されるため、絵文字（サロゲートペア）を含む文書で
+     絶対位置がズレる（外部からの正確な補正は、textlint 内部の文分割ロジックの再現が必要で
+     現実的ではないと判断）。校正エンジンは `message.range` を変換せず UTF-16 オフセットの
+     まま使い、上記 7 ルールはサロゲートペアを含む文書ではスキップする
+     （`diagnostics.js` に渡す `{ start, end }` は UTF-16 オフセットで統一する契約のまま。
+     2026-09-19 レビューで初回実装の誤り（コードポイント単位という誤った前提での一律変換）を
+     修正。詳細は `docs/textlint-research.md`）。
    - **処理時間**: `textlint-rule-preset-japanese` の 12 ルールのうち、文単位で解析する
      5 ルール（`max-ten`・`no-doubled-conjunctive-particle-ga`・`no-doubled-conjunction`・
      `no-doubled-joshi`・`sentence-length`）は文書サイズに対して超線形に遅くなる
@@ -105,11 +112,17 @@ Zed での日本語執筆を支援する。文字変換・校正・翻訳のエ�
      は約 5000 字）。
    - 初回は `.txt` 対象・情報レベルの指摘に絞る。プロジェクトごとの任意ルール読み込みや
      自動修正は、この段階のスコープに含めない（将来の追加機能として扱う）。
-   実装: `src/engines/proofread.js`（コードポイント→UTF-16 変換、サイズ上限による
-   ルール切り替え）、`scripts/build-server-dist.js`／`deploy-server-dev.js` の対象別対応
+   実装: `src/engines/proofread.js`（サイズ・絵文字の有無に応じたルール切り替え。設定ファイルは
+   探索しない — `@textlint/kernel` の `TextlintKernelDescriptor` を直接構築し、
+   `@textlint/textlint-plugin-text` を明示的にプラグインとして渡す。`textlint` パッケージが
+   公開する `loadTextlintrc` は設定探索を行うため使わない）、
+   `scripts/build-server-dist.js`／`deploy-server-dev.js` の対象別対応
    （`scripts/targets.js` に拡張ごとの依存・配布物名・エントリーポイントを集約）。
    LICENSE ファイルを持たない依存は `package.json` の SPDX ライセンス識別子から
    `scripts/license-texts/` の標準テキストで補う（著作権者は author／repository から推定）。
+   校正拡張（`inspections` がある拡張）は診断を既定で有効にし、明示的な
+   `initialization_options.diagnostics.enabled: false` でのみ無効化する
+   （`src/lsp/create-server.js`）。
 7. DeepL を追加する（校正拡張とは別に接続するか、校正拡張に含めるかは未定）。
 
 字数の常時表示は後段とし、このための Zed 本体変更は初期範囲に含めない。

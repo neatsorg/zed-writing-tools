@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "start": "node src/lsp/server.js --stdio",
     "test": "node --test test/*.test.js",
@@ -12,7 +14,9 @@
     "deploy:server-dev": "node scripts/deploy-server-dev.js"
   },
   "dependencies": {
+    "@textlint/kernel": "15.8.0",
     "@textlint/module-interop": "15.8.0",
+    "@textlint/textlint-plugin-text": "15.8.0",
     "jaconv": "1.1.2",
     "textlint": "15.8.0",
     "textlint-rule-preset-japanese": "10.0.4",

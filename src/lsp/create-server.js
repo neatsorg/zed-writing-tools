@@ -18,8 +18,9 @@ export function createServer({ transformations, inspections }) {
 
   connection.onInitialize(params => {
     enabled = params.initializationOptions?.conversion !== false;
-    // inspections が空の間（本格校正エンジン接続前）は、設定で有効化しても診断を開始しない。
-    if (params.initializationOptions?.diagnostics?.enabled === true && inspections.length > 0) {
+    // inspections がある拡張（校正拡張）では既定で診断を有効にし、明示的な false でのみ無効化する。
+    // inspections が空（変換拡張、または本格校正エンジン接続前）では、設定に関わらず診断を開始しない。
+    if (params.initializationOptions?.diagnostics?.enabled !== false && inspections.length > 0) {
       diagnostics = createDiagnostics({
         documents,
         publish: params => connection.sendDiagnostics(params),

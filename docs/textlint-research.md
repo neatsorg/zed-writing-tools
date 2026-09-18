@@ -45,21 +45,65 @@ npm 未公開のため依存管理が複雑になる。初回スコープでは�
 `linter.lintText()` が返す `message.index`／`message.range`／`message.loc.column` の単位を、
 絵文字・結合文字・改行を含む文字列で検証した。
 
-```js
-const text = '前置き😀食べれる。'; // 'き' の直後に絵文字(サロゲートペア)
-// no-dropping-the-ra が「れ」を検出
-// -> index: 6, range: [6, 7]
-// JS の UTF-16 位置では text[7] が「れ」（サロゲートペアを2ユニットと数えるため）
-// Unicode コードポイント位置では 6 番目が「れ」（絵文字を1文字と数えるため）
-```
+初回実装（2026-09-19 実装時点）では、`no-dropping-the-ra` の 1 ルールだけを見て
+「`index` は Unicode コードポイント単位」と判断し、全ルールの結果に対して
+コードポイント→UTF-16 変換を一律適用した。これは誤りで、レビュー（後述）で
+複数の再現例により誤りが判明した。**正しい結論は次の「位置情報の検証（訂正）」節を参照。**
 
-`index: 6` は UTF-16 位置ではなく **Unicode コードポイント位置** と一致する。
-結合文字（`é` のような合成前の文字）は元から 1 コードポイント＝1 UTF-16 コードユニットなので
-影響しない。改行（`\r\n`）は 2 コードポイントとして数えられる（`\r` と `\n` それぞれ）。
+## 位置情報の検証（訂正、レビュー対応 2026-09-19）
 
-結論: 校正エンジンは、テキスト全体を 1 回スキャンして「コードポイント位置 → UTF-16 位置」の
-対応表を作り、`message.index`／`range` をその表で変換してから `diagnostics.js` に渡す
-（`{ start, end }` は既存の契約どおり UTF-16 オフセット、終了位置を含まない）。
+レビューで次の再現例が報告された。
+
+- `😀あ​い。` で `no-zero-width-spaces` の指摘が本来のゼロ幅スペースではなく「い」を指す。
+- `😀。\n食べれる。` で `no-dropping-the-ra` の指摘が「れ」ではなく「る」を指す。
+
+いずれも、初回実装のコードポイント→UTF-16 変換を全ルールに一律適用したことが原因だった。
+`@textlint/text-to-ast`（`.txt` 用パーサー）のソースを確認すると、AST ノードの `range` は
+`lineText.length`（JS 文字列の `.length`、つまり **UTF-16 コードユニット単位**）で計算されている。
+つまり **textlint 本体の基本位置単位は UTF-16** であり、初回実装の前提（コードポイント単位）が
+そもそも誤りだった。
+
+一方、`textlint-rule-no-zero-width-spaces` のような正規表現ベースのルールは
+`text.matchAll(/.../)` の `match.index`（JS 文字列上のインデックス、UTF-16 単位）を相対位置として
+`report()` に渡す。これは textlint 本体の基準と一致するため、変換なしで正しく動く。
+
+対して `textlint-rule-no-dropping-the-ra` は `kuromojin.tokenize()`（kuromoji.js の Promise
+ラッパー）が返すトークンの `word_position` を使う。実測すると、絵文字を含む文字列で
+`word_position` は **1-indexed の Unicode コードポイント位置**だった
+（`前置き😀食べれる。` を kuromoji でトークン化すると `😀` の `word_position` は 4、
+`れ` は 7。コードポイント単位で 3、6 に対応し、UTF-16 単位（`😀` が 2 ユニット）とは一致しない）。
+`@textlint/kernel` の `resolveLocation`（`source-location.js`）は
+`absoluteRange = [nodeRange[0] + paddingIR.range[0], ...]` という加算で絶対位置を作るため、
+UTF-16 単位のノード開始位置に、コードポイント単位の相対位置がそのまま加算され、
+絵文字を含む文書ではズレる。
+
+同様の実測（絵文字ありなしでの相対シフト量を比較）を `textlint-rule-preset-japanese` の
+全 12 ルールに対して行った結果:
+
+| 分類 | ルール | 位置単位 | 実装 |
+| --- | --- | --- | --- |
+| ズレる（形態素解析・言語解析系） | max-ten | コードポイント | kuromoji |
+| | no-doubled-conjunctive-particle-ga | コードポイント | kuromoji |
+| | no-doubled-conjunction | コードポイント | kuromoji（文単位で正しいノード開始位置に相対 0 を加算するため、対象トークンが文頭にあると偶然ズレが見えないことがある） |
+| | no-doubled-joshi | コードポイント | kuromoji |
+| | no-double-negative-ja | コードポイント | kuromoji |
+| | no-dropping-the-ra | コードポイント | kuromoji |
+| | no-mix-dearu-desumasu | コードポイント | `analyze-desumasu-dearu`（内部で形態素解析） |
+| ズレない（正規表現・単純な走査） | sentence-length | UTF-16 | 文字数カウント |
+| | no-nfd | UTF-16 | 正規表現 |
+| | no-invalid-control-character | UTF-16 | 正規表現 |
+| | no-zero-width-spaces | UTF-16 | 正規表現 |
+| | no-kangxi-radicals | UTF-16 | 正規表現 |
+
+ズレるルールを外部から正確に補正するには、textlint 内部の文分割ロジック（`sentence-splitter`
+相当）を再現してノード境界を特定する必要があり、現実的ではない
+（`no-doubled-conjunction` の例のように、ノードの開始位置自体は正しいことがあるため、
+「行単位で一律に変換する」ような近似では、既に正しい値をさらにズラして悪化させることがある）。
+
+対応（実装済み）: `message.range` は変換せず、そのまま UTF-16 オフセットとして使う
+（textlint 本体の基準に合わせる）。ズレる 7 ルール（上表）は、対象の文書に
+サロゲートペア（絵文字等）が含まれる場合にスキップする。結合文字（`é` の合成前表現など）は
+元から 1 コードポイント＝1 UTF-16 コードユニットなので影響しない。
 
 ## 処理時間の検証
 
@@ -126,3 +170,29 @@ no-doubled-joshi・sentence-length）はいずれも文単位で解析するル�
   （元拡張のサンプル文書 [EXAMPLES.md](https://github.com/ics-creative/project-japanese-proofreading/blob/master/EXAMPLES.md)
   は約 5000 字）。30000 字ちょうどの文書を編集した場合の最悪ケース（重い 5 ルール合計で
   約 2 秒のブロッキング）は許容する。
+- 位置情報: 上記「位置情報の検証（訂正）」のとおり、絵文字を含む文書では形態素解析系の
+  7 ルールをスキップする。文書サイズ対策（重い 5 ルール）とは別の軸で、両方を同時に判定する。
+
+## レビュー対応（2026-09-19）
+
+最初の実装（コミット `1188ae8`）に対するレビューで、次の 3 件が報告され、いずれも対応した。
+
+1. **位置ズレ**（上記「位置情報の検証（訂正）」参照）。コードポイント→UTF-16 変換の一律適用を
+   取りやめ、`message.range` を UTF-16 オフセットのまま使う。形態素解析系 7 ルールは
+   サロゲートペアを含む文書でスキップする。
+2. **校正拡張が既定で診断しない**。`src/lsp/create-server.js` の診断有効化条件を
+   `initializationOptions?.diagnostics?.enabled === true` から `!== false` に変更した。
+   `inspections`（校正拡張）がある場合は既定で有効、明示的な `false` でのみ無効化する
+   （`inspections` が空の変換拡張・本格校正接続前は影響しない）。
+3. **プロジェクトの textlint 設定を意図せず読み込む**。`loadTextlintrc({})` は設定ファイルを
+   探索する（`textlintrc` が見つかればフィルター・プラグインが混入する）。`textlint` パッケージが
+   公開する API には「設定探索なしでビルトインプラグインだけロードする」関数
+   （`loadBuiltinPlugins`）が存在するが、これは非公開の内部 API（`textlint/lib/src/loader/`
+   配下）で、パッケージの公開エントリーポイントからは export されていない。代わりに
+   `@textlint/kernel` の `TextlintKernelDescriptor` を直接構築し、
+   `@textlint/textlint-plugin-text` を明示的にプラグインとして渡すことで、設定探索を
+   完全に回避した（`@textlint/kernel`・`@textlint/textlint-plugin-text` を依存に追加）。
+
+再現手順・検証は `test/proofread.test.js` に自動テストとして追加した
+（絵文字を挟んだ位置の正確性、形態素解析系ルールのスキップ、`.textlintrc` の非依存、
+診断の既定有効化・明示的な無効化）。

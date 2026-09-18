@@ -112,13 +112,19 @@ npm run deploy:server-dev -- proofreading  # 校正拡張の作業ディレク�
 ### 校正拡張（textlint 接続）
 
 `extension-proofreading/`（ID: `text-tools-proofreading`）が `src/engines/proofread.js` を
-`.txt` に対して実行し、情報レベルの診断として返します。ルールは
+`.txt` に対して実行し、情報レベルの診断として返します。診断は既定で有効です
+（`initialization_options.diagnostics.enabled: false` で無効化できます）。ルールは
 [textlint-rule-preset-japanese](https://github.com/textlint-ja/textlint-rule-preset-japanese)
-の全 12 ルール（誤検知が少ないことを方針として明言するプリセット）。このうち文単位で解析する
-5 ルール（max-ten・no-doubled-conjunctive-particle-ga・no-doubled-conjunction・
-no-doubled-joshi・sentence-length）は文書サイズに対して超線形に遅くなるため、
-文書が 30000 字（UTF-16 コードユニット数）を超える場合はスキップします
-（詳細は [調査記録](docs/textlint-research.md)）。
+の全 12 ルール（誤検知が少ないことを方針として明言するプリセット）。プロジェクトの
+`.textlintrc` 等は探索・読み込みません（同梱ルールのみで動作します）。
+
+このうち文単位で解析する 5 ルール（max-ten・no-doubled-conjunctive-particle-ga・
+no-doubled-conjunction・no-doubled-joshi・sentence-length）は文書サイズに対して超線形に
+遅くなるため、文書が 30000 字（UTF-16 コードユニット数）を超える場合はスキップします。
+また、kuromoji などの形態素解析・言語解析を使う 7 ルール（上記のうち sentence-length を除く
+4 ルールと、no-double-negative-ja・no-dropping-the-ra・no-mix-dearu-desumasu）は、
+絵文字（サロゲートペア）を含む文書では相対位置の単位が食い違い、指摘位置がズレるため、
+そのような文書ではスキップします（詳細は [調査記録](docs/textlint-research.md)）。
 
 校正拡張は変換の Code Action を提供しません（`transformations: []`）。逆に変換拡張は
 `inspections: []` で、校正エンジン（textlint）を import しないため依存を読み込みません。
