@@ -2,12 +2,47 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createMessageConnection, StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
-import { toFullwidthAlphanumeric, toHalfwidthAlphanumeric } from '../src/engines/width.js';
+import {
+  toFullwidthAlphanumeric, toHalfwidthAlphanumeric,
+  toFullwidthAlpha, toHalfwidthAlpha,
+  toFullwidthDigit, toHalfwidthDigit,
+  toFullwidthSymbol, toHalfwidthSymbol,
+  toFullwidthKana, toHalfwidthKana,
+} from '../src/engines/width.js';
+import { toHiragana, toKatakana } from '../src/engines/kana.js';
 
 test('width conversion preserves non-target characters and round trips ASCII alphanumerics', () => {
   const untouched = ' 日本語 😀 e\u0301 ｶﾞ ガ ① ㍑ !？\r\n';
   assert.equal(toFullwidthAlphanumeric('Az09' + untouched), 'Ａｚ０９ 日本語 😀 ｅ\u0301 ｶﾞ ガ ① ㍑ !？\r\n');
   assert.equal(toHalfwidthAlphanumeric(toFullwidthAlphanumeric('Az09' + untouched)), 'Az09' + untouched);
+});
+
+test('width conversion targets alphabet and digit independently', () => {
+  const untouched = ' 日本語 😀 ①';
+  assert.equal(toFullwidthAlpha('Az09' + untouched + 'é'), 'Ａｚ09' + untouched + 'ｅ́');
+  assert.equal(toHalfwidthAlpha(toFullwidthAlpha('Az09')), 'Az09');
+  assert.equal(toFullwidthDigit('Az09' + untouched), 'Az０９' + untouched);
+  assert.equal(toHalfwidthDigit(toFullwidthDigit('Az09')), 'Az09');
+});
+
+test('width conversion of symbols excludes alphanumerics and spacing width', () => {
+  const untouched = ' 日本語 😀 é ①';
+  const halfwidth = 'Az09!?()\\`\'"' + untouched;
+  const fullwidth = 'Az09！？（）￥‘’”' + untouched;
+  assert.equal(toFullwidthSymbol(halfwidth), fullwidth);
+  assert.equal(toHalfwidthSymbol(fullwidth), halfwidth);
+});
+
+test('width conversion of kana merges half-width voiced marks', () => {
+  const untouched = ' 日本語 😀 é ①';
+  assert.equal(toFullwidthKana('ｶﾞｷｸ' + untouched), 'ガキク' + untouched);
+  assert.equal(toHalfwidthKana(toFullwidthKana('ｶﾞｷｸ')), 'ｶﾞｷｸ');
+});
+
+test('kana conversion between hiragana and katakana preserves other characters', () => {
+  const untouched = ' 日本語 😀 é ①';
+  assert.equal(toKatakana('ひらがな' + untouched), 'ヒラガナ' + untouched);
+  assert.equal(toHiragana(toKatakana('ひらがな')), 'ひらがな');
 });
 
 test('stdio LSP: unsaved incremental edits, UTF-16 positions and stale action rejection', { timeout: 10000 }, async t => {
@@ -44,7 +79,7 @@ test('stdio LSP: unsaved incremental edits, UTF-16 positions and stale action re
   const range = { start: { line: 0, character: 7 }, end: { line: 0, character: 12 } };
   const params = { textDocument: { uri }, range, context: { diagnostics: [] } };
   const actions = await rpc.sendRequest('textDocument/codeAction', params);
-  assert.equal(actions.length, 2);
+  assert.equal(actions.length, 12);
   assert.equal(actions[0].edit, undefined);
   const resolved = await rpc.sendRequest('codeAction/resolve', actions[0]);
   const change = resolved.edit.documentChanges[0];
