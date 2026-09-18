@@ -14,7 +14,7 @@ export const TARGETS = {
     serverEntry: 'src/lsp/proofreading-server.js',
     dependencies: [
       'vscode-languageserver', 'vscode-languageserver-textdocument',
-      'textlint', 'textlint-rule-preset-japanese', '@textlint/module-interop',
+      'textlint-rule-preset-japanese', '@textlint/module-interop',
       '@textlint/kernel', '@textlint/textlint-plugin-text', 'kuromoji',
     ],
   },

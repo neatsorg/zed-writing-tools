@@ -3,12 +3,18 @@
 確認日: 2026-09-19。ユーザー方針: 本プロジェクトを GPLv3 とする。
 これは配布準備の技術的な調査記録であり、個別の法的適合性を保証するものではない。
 
+追記（2026-09-19）: 下記「未解決事項」のうち、CC-BY-3.0 依存経路の除去・
+辞書表示の識別明確化・表示生成スクリプトの修正（npm 側・Rust 側とも）は対応済み。
+残る未完了項目は GPLv3 本文・LICENSE 宣言・Corresponding Source の整備（末尾の
+「現在の表示生成処理で修正が必要な点」の項目 6）のみ。詳細は各節に追記した。
+
 ## 結論
 
 本プロジェクトに GPLv3 を採用する方針は維持できる。主要なコード依存に
-GPLv3 採用を阻む条件は見つからなかった。ただし、現行配布物をそのまま
-「全依存確認済み・公開可」とは扱わない。CC-BY-3.0 データの扱い、辞書の
-独自条件、表示・ソース提供の整備をリリース前の未完了項目として残す。
+GPLv3 採用を阻む条件は見つからなかった。CC-BY-3.0 データの依存経路除去、
+辞書表示の識別明確化、表示生成スクリプトの修正は完了した。GPLv3 本文・
+LICENSE 宣言・リリース版の Corresponding Source 整備がリリース前の
+残作業として残る。
 
 ## 対象と確認方法
 
@@ -62,6 +68,12 @@ NAIST/ICOT 条件（[NAIST-2003 本文](https://spdx.org/licenses/NAIST-2003.htm
 同一視したり、コードへの組み込みまで含めた無条件の GPL 互換と断定しない。
 原文の保持だけで本件のあらゆる配布形態の法的評価が済むという結論ではない。
 
+対応済み（2026-09-19）: 集約 THIRD_PARTY_NOTICES の kuromoji セクションで、
+NOTICE ファイルの見出しを「NOTICE（同梱データ等への追加条件の可能性、本体ライセンスとは
+別に保持）」に変更し、Apache-2.0 本体表示と辞書条件を並記のまま区別できるようにした
+（`scripts/build-server-dist.js` の `findNoticeFile` 呼び出し部分）。個別パッケージ名を
+ハードコードせず、NOTICE ファイルを持つ全パッケージに同じ扱いを適用する汎用処理。
+
 ### spdx-exceptions 2.5.0
 
 CC-BY-3.0 の識別子リスト。README に Linux Foundation と Contributors の帰属表示がある。
@@ -76,25 +88,43 @@ GPL の派生物として組み込むことは区別が必要。提供者によ�
 
 推奨する解決方向は、CLI/設定探索を必要としない本サーバーでは `textlint` の高水準 API
 から `@textlint/kernel` の直接使用へ移行できるか検証し、この依存経路を配布物から外すこと。
-未実装・未検証であり、ファイルを削除するだけでは不可。維持する場合は独立データとしての
-収録・利用の評価を別途完了させる。現段階では公開判定上の未解決項目。
+
+対応済み（2026-09-19）: `src/engines/proofread.js` を `@textlint/kernel` の
+`TextlintKernel`／`TextlintKernelDescriptor` を直接使う実装に変更し、`textlint` パッケージ
+本体への依存を `package.json` から削除した。校正配布物を再ビルドして確認した結果、
+`spdx-exceptions`・`read-package-up`・`normalize-package-data` 等の依存経路一式が
+インストール対象から消え、npm 依存件数は 241 件から 111 件（`node_modules` 内、直下＋入れ子）
+に減少した。CC-BY-3.0 データはこの配布物にもはや含まれない。
 
 ## 現在の表示生成処理で修正が必要な点
 
-1. 校正配布物の実依存は 241 件だが、集約処理は直下の 233 件しか列挙しない。
-   入れ子 8 件は元ファイルには存在する。再帰列挙し、版違いも表示に含める。
-2. LICENSE の候補名が限定されている。`kuromoji/LICENSE-2.0.txt` や小文字の
-   `license`、複数の LICENSE、NOTICE、README 内の許諾を適切に扱う。
-3. `author` やリポジトリ所有者から著作権者を推測して生成しない。
-   例: imurmurhash は README に Gary Court と Jens Taylor の連名・年がある。
-   テンプレートで年を消したり著作権者を一人にすると原表示の正確な転記にならない。
-4. `AND` を `OR` と同じように処理し最初の識別子だけ採用する方式を廃止する。
-   現行 npm には AND 式はないが、Rust には実在する。共通化時にも注意する。
-5. Rust/Wasm 向けの第三者表示は別途生成する。npm の表示だけではカバーできない。
-   元 crate に表示ファイルが無い場合は、対応版の上流原文を取得・保存し、推測しない。
-6. GPLv3 本文、本体のライセンス宣言、リリース版に対応するソース・ビルド手順・パッチ・
-   必要な依存ソースの提供を整える。トップレベルの GitHub 自動ソース ZIP だけで
+1. 対応済み。`listInstalledPackages`（`scripts/build-server-dist.js`）を、直下だけでなく
+   入れ子 `node_modules` も再帰的に列挙する実装に変更した。同一 `name@version` は
+   最初に見つかったものを使う（内容は同一のはず）。校正配布物は依存整理後で 109 件。
+2. 対応済み。`findLicenseFile` で LICENSE/LICENCE の大小文字・拡張子違いを広く受け付け、
+   `findLicenseInReadme` で README 内の MIT 全文埋め込みも検出する。見つからない場合は
+   `scripts/known-licenses/`（個別確認済み全文、25 件）で解決し、それでも無い場合は
+   ビルドを失敗させる（取りこぼしの隠蔽を防ぐ）。
+3. 対応済み。`extractCopyrightHolder` 的な推測処理は削除し、`hasCopyrightPlaceholder` で
+   プレースホルダーの有無だけを判定する方式にした。著作権者欄が要るライセンスで
+   LICENSE/README/known-licenses のいずれでも解決できない場合はビルドを失敗させる。
+4. 対応済み。npm 側（`resolveLicenseBySpdxField`）は `AND` を検出したら例外を投げ、
+   個別確認を強制する方式にした（現行 npm 依存には実在しない）。Rust 側は
+   `scripts/spdx-expression.js` の `parseSpdxExpression` で AND を「複数セクションを
+   すべて収録する」正しい形で処理する（`unicode-ident` の
+   `(MIT OR Apache-2.0) AND Unicode-3.0` で確認済み）。
+5. 対応済み。`scripts/build-rust-notices.js` を新規実装。`cargo metadata --locked --offline`
+   で両 Cargo 拡張（`extension/`, `extension-proofreading/`、依存集合は完全に同一）の
+   全 87 crate を解決し、`extension/THIRD_PARTY_NOTICES`・
+   `extension-proofreading/THIRD_PARTY_NOTICES` を生成した（`npm run build:rust-notices`）。
+   crate 内に LICENSE 系ファイルが無い 11 crate（wasm-tools 系・wit-bindgen 系・
+   auditable-serde）は `scripts/known-licenses-rust/` に上流リポジトリの原文を個別保存して
+   解決し、それ以外は汎用 SPDX テンプレート（著作権者欄の無いもののみ、
+   `scripts/license-texts/` に Unicode-3.0・Zlib・Unlicense・0BSD を追加）で解決した。
+   いずれの手段でも解決できない場合はエラーにする（npm 側と同じ方針、推測での補完はしない）。
+6. 未着手。GPLv3 本文、本体のライセンス宣言、リリース版に対応するソース・ビルド手順・
+   パッチ・必要な依存ソースの提供を整える。トップレベルの GitHub 自動ソース ZIP だけで
    依存まで含めた Corresponding Source が満たされるとは限らない。
 
-本調査では上記の実装修正、ライセンスの付与、公開、依存差し替えは行っていない。
-GPLv3-only / or-later の明示も、LICENSE を整える段階で確定する。
+本調査では上記のうち項目 6（ライセンス付与・公開・Corresponding Source の整備）は
+未実施。GPLv3-only / or-later の明示も、LICENSE を整える段階で確定する。

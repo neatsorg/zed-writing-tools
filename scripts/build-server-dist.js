@@ -40,88 +40,150 @@ async function loadLicenseTemplate(spdxId) {
   return template;
 }
 
-function extractCopyrightHolder(pkg) {
-  const fromPerson = person => {
-    if (typeof person === 'string') return person.split('<')[0].split('(')[0].trim();
-    if (person && typeof person === 'object' && person.name) return person.name;
-    return null;
-  };
-  const holder = fromPerson(pkg.author) ?? fromPerson(Array.isArray(pkg.contributors) ? pkg.contributors[0] : null);
-  if (holder) return holder;
-  const repositoryUrl = typeof pkg.repository === 'string' ? pkg.repository : pkg.repository?.url;
-  const match = repositoryUrl?.match(/github\.com[:/]+([^/]+)\//) ?? repositoryUrl?.match(/^([^/]+)\/[^/]+$/);
-  return match?.[1] ?? pkg.name;
-}
-
-function fillLicensePlaceholders(template, holder) {
-  return template
-    .replace(/<year>\s*/gi, '')
-    .replace(/\[yyyy\]\s*/gi, '')
-    .replace(/<copyright holders>/gi, holder)
-    .replace(/<owner>/gi, holder)
-    .replace(/\[name of copyright owner\]/gi, holder);
+// 著作権者を author／リポジトリ所有者から推測しない（不正確になりうる。例:
+// imurmurhash の author は Jens Taylor のみだが、実際の著作権表示は Gary Court・Jens Taylor の
+// 連名。docs/license-audit.md 参照）。テンプレートに著作権者プレースホルダーが無い
+// ライセンス（Apache-2.0・CC0-1.0・WTFPL・BlueOak-1.0.0・Python-2.0・CC-BY-3.0）はそのまま使うが、
+// プレースホルダーがあるライセンス（MIT・BSD-2/3-Clause・ISC 等）は
+// scripts/known-licenses/（個別に確認済みの全文）で解決できない限りビルドを失敗させる。
+function hasCopyrightPlaceholder(template) {
+  return /<year>|<copyright holders>|<owner>|\[yyyy\]|\[name of copyright owner\]/i.test(template);
 }
 
 // package.json の license は単一の SPDX 識別子（"MIT"）のほか、"(MIT OR CC0-1.0)" のような
-// 選択式や、古い形式の licenses 配列（[{ type: "MIT" }]）もある。標準テキストがある最初の
-// 識別子を使う。
+// 選択式や、古い形式の licenses 配列（[{ type: "MIT" }]）もある。"AND"（両方の条件を満たす
+// 必要がある）は最初の識別子だけを採用する簡略化をせず、複合条件として個別確認を要求する。
 async function resolveLicenseBySpdxField(pkg) {
-  const candidates = pkg.license
-    ? pkg.license.match(/[A-Za-z0-9.\-]+/g) ?? []
+  const raw = pkg.license ?? '';
+  if (/\bAND\b/.test(raw)) {
+    throw new Error(
+      `${pkg.name}@${pkg.version}: ライセンス式に AND が含まれます（${raw}）。` +
+        '複数条件をすべて満たす必要があるため、個別に確認してください。',
+    );
+  }
+  const candidates = raw
+    ? raw.match(/[A-Za-z0-9.\-]+/g) ?? []
     : (pkg.licenses ?? []).map(license => license.type).filter(Boolean);
   for (const spdxId of candidates) {
-    if (spdxId === 'OR' || spdxId === 'AND') continue;
+    if (spdxId === 'OR') continue;
     const template = await loadLicenseTemplate(spdxId);
-    if (template) return fillLicensePlaceholders(template, extractCopyrightHolder(pkg));
+    if (template && !hasCopyrightPlaceholder(template)) return template;
   }
   return null;
 }
 
+async function findNoticeFile(packageDir) {
+  const entries = await readdir(packageDir, { withFileTypes: true }).catch(() => []);
+  const candidate = entries.find(entry => entry.isFile() && /^notice(\.|$)/i.test(entry.name));
+  if (!candidate) return null;
+  return readFile(path.join(packageDir, candidate.name), 'utf8').catch(() => null);
+}
+
+// LICENSE・LICENCE の大小文字・拡張子違い（kuromoji の LICENSE-2.0.txt 等）を広く受け付ける。
+// 完全一致する名前を優先する。
 async function findLicenseFile(packageDir) {
-  for (const name of ['LICENSE', 'LICENSE.txt', 'LICENSE.md', 'License.txt']) {
-    try {
-      return await readFile(path.join(packageDir, name), 'utf8');
-    } catch {
-      // 次の候補名を試す
-    }
+  const entries = await readdir(packageDir, { withFileTypes: true }).catch(() => []);
+  const candidates = entries
+    .filter(entry => entry.isFile() && /^licen[cs]e/i.test(entry.name))
+    .sort((a, b) => {
+      const rank = name => (/^licen[cs]e$/i.test(name) ? 0 : /^licen[cs]e\.(txt|md)$/i.test(name) ? 1 : 2);
+      return rank(a.name) - rank(b.name) || a.name.localeCompare(b.name);
+    });
+  for (const candidate of candidates) {
+    const text = await readFile(path.join(packageDir, candidate.name), 'utf8').catch(() => null);
+    if (text) return text;
   }
   return null;
 }
 
-async function listInstalledPackages(nodeModulesDir) {
-  const names = [];
-  for (const entry of await readdir(nodeModulesDir, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue;
-    if (entry.name.startsWith('@')) {
-      for (const scoped of await readdir(path.join(nodeModulesDir, entry.name), { withFileTypes: true })) {
-        if (scoped.isDirectory()) names.push(`${entry.name}/${scoped.name}`);
-      }
-      continue;
-    }
-    if (entry.name.startsWith('.')) continue;
-    names.push(entry.name);
+// LICENSE 系ファイルが無いパッケージでも、README にライセンス全文が埋め込まれていることがある
+// （imurmurhash・lru_map 等）。MIT の特徴的な文言を境界に抽出する。
+const MIT_FULLTEXT_PATTERN =
+  /Copyright[\s\S]{0,2000}?Permission is hereby granted[\s\S]{0,4000}?(?:DEALINGS IN THE SOFTWARE|OTHER DEALINGS IN THE SOFTWARE)\.?/i;
+
+async function findLicenseInReadme(packageDir) {
+  for (const name of ['README.md', 'readme.md', 'Readme.md', 'README', 'README.markdown']) {
+    const text = await readFile(path.join(packageDir, name), 'utf8').catch(() => null);
+    if (!text) continue;
+    const match = text.match(MIT_FULLTEXT_PATTERN);
+    if (match) return match[0].trim();
   }
-  return names.sort();
+  return null;
+}
+
+// LICENSE ファイル・README 全文検出のどちらでも見つからないパッケージのうち、著作権者欄が
+// 必要なライセンスについては、個別に確認済みの全文を scripts/known-licenses/ に置く
+// （README.md にファイルごとの出典を記録）。
+const knownLicensesDir = fileURLToPath(new URL('known-licenses/', import.meta.url));
+async function findKnownLicense(packageName) {
+  const fileName = packageName.includes('/') ? packageName.split('/')[1] : packageName;
+  return readFile(path.join(knownLicensesDir, `${fileName}.txt`), 'utf8').catch(() => null);
+}
+
+// 直下だけでなく、バージョン競合で作られる入れ子の node_modules も再帰的に列挙する。
+// 同じ name@version が複数箇所にあれば最初に見つかったものを使う（内容は同一のはず）。
+async function listInstalledPackages(nodeModulesDir) {
+  const packageDirsByKey = new Map();
+  async function walk(dir) {
+    let entries;
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      if (entry.name === '.bin' || entry.name.startsWith('.')) continue;
+      if (entry.name.startsWith('@')) {
+        await walk(path.join(dir, entry.name));
+        continue;
+      }
+      const packageDir = path.join(dir, entry.name);
+      const pkg = await readFile(path.join(packageDir, 'package.json'), 'utf8')
+        .then(JSON.parse)
+        .catch(() => null);
+      if (pkg) {
+        const key = `${pkg.name}@${pkg.version}`;
+        if (!packageDirsByKey.has(key)) packageDirsByKey.set(key, packageDir);
+      }
+      await walk(path.join(packageDir, 'node_modules'));
+    }
+  }
+  await walk(nodeModulesDir);
+  return [...packageDirsByKey.keys()].sort().map(key => packageDirsByKey.get(key));
 }
 
 async function buildThirdPartyNotices(nodeModulesDir) {
-  const names = await listInstalledPackages(nodeModulesDir);
+  const packageDirs = await listInstalledPackages(nodeModulesDir);
   const summaryLines = [];
   const licenseSections = [];
-  for (const name of names) {
-    const packageDir = path.join(nodeModulesDir, name);
+  for (const packageDir of packageDirs) {
     const pkg = JSON.parse(await readFile(path.join(packageDir, 'package.json'), 'utf8'));
     const repository = typeof pkg.repository === 'string' ? pkg.repository : pkg.repository?.url ?? '';
     summaryLines.push(`- ${pkg.name}@${pkg.version} (${pkg.license ?? 'unknown'}) ${repository}`);
 
-    const licenseText = (await findLicenseFile(packageDir)) ?? (await resolveLicenseBySpdxField(pkg));
+    const licenseText =
+      (await findLicenseFile(packageDir)) ??
+      (await findLicenseInReadme(packageDir)) ??
+      (await findKnownLicense(pkg.name)) ??
+      (await resolveLicenseBySpdxField(pkg));
     if (!licenseText) {
       throw new Error(
-        `${name}（license: ${pkg.license ?? 'unknown'}) の LICENSE ファイルが見つからず、` +
-          `標準ライセンス文（scripts/license-texts/）にも該当がありません。テキストを追加してください。`,
+        `${pkg.name}@${pkg.version}（license: ${pkg.license ?? 'unknown'}）のライセンス全文が` +
+          '見つかりません。LICENSE ファイル・README・scripts/known-licenses/ のいずれにも該当が' +
+          'ないため、著作権者を推測せずビルドを失敗させています。個別に確認して' +
+          'scripts/known-licenses/ に追加してください。',
       );
     }
-    licenseSections.push(`## ${pkg.name}@${pkg.version}\n\n${licenseText.trim()}\n`);
+    let section = `## ${pkg.name}@${pkg.version}\n\n${licenseText.trim()}\n`;
+    const noticeText = await findNoticeFile(packageDir);
+    // NOTICE ファイルは Apache-2.0 の追加帰属表示のこともあれば（kuromoji の場合）、
+    // 本体とは別ライセンス条件の同梱データ（mecab-ipadic、NAIST-2003 相当）を指すこともある。
+    // 上の本体ライセンスと同一視されないよう見出しで明示する（docs/license-audit.md 参照）。
+    if (noticeText) {
+      section += `\n### NOTICE（同梱データ等への追加条件の可能性、本体ライセンスとは別に保持）\n\n${noticeText.trim()}\n`;
+    }
+    licenseSections.push(section);
   }
   return (
     'Third-Party Notices\n====================\n\n' +

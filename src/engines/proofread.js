@@ -2,8 +2,7 @@
 // LSP や Zed 固有の型は扱わず、{ start, end, message } の UTF-16 オフセット配列（終了位置を
 // 含まない）を返す。診断への変換・集約・古い結果の破棄は src/lsp/diagnostics.js の責務。
 import { createRequire } from 'node:module';
-import { createLinter } from 'textlint';
-import { TextlintKernelDescriptor } from '@textlint/kernel';
+import { TextlintKernel, TextlintKernelDescriptor } from '@textlint/kernel';
 import { moduleInterop } from '@textlint/module-interop';
 import textlintPluginTextModule from '@textlint/textlint-plugin-text';
 import presetJapaneseModule from 'textlint-rule-preset-japanese';
@@ -42,35 +41,39 @@ function buildRules(ruleNames) {
   }));
 }
 
-// プロジェクトの .textlintrc 等は探索しない。textlint パッケージが公開する API
-// （createLinter・loadTextlintrc）だけでは設定ファイル探索を避けられないため、
-// @textlint/kernel の TextlintKernelDescriptor を直接構築する。LSP サーバーの作業ディレクトリは
-// 開いているプロジェクトのルートになりうるため、設定探索を経由するとそこにある textlintrc の
-// ルール・フィルターが意図せず混入する。.txt に必要な @textlint/textlint-plugin-text は
-// 常に明示的に含める。
-function buildDescriptor(ruleNames) {
-  return new TextlintKernelDescriptor({
+// プロジェクトの .textlintrc 等は探索しない。textlint パッケージの高水準 API
+// （createLinter・loadTextlintrc）はいずれも設定ファイル探索、または探索を行う
+// ライブラリ群（read-package-up 経由で spdx-exceptions（CC-BY-3.0）まで連なる。
+// docs/license-audit.md）を配布物に持ち込むため使わない。@textlint/kernel の
+// TextlintKernel／TextlintKernelDescriptor を直接使い、textlint パッケージ自体への
+// 依存を持たない。LSP サーバーの作業ディレクトリは開いているプロジェクトのルートに
+// なりうるため、設定探索を経由するとそこにある textlintrc のルール・フィルターが
+// 意図せず混入する。.txt に必要な @textlint/textlint-plugin-text は常に明示的に含める。
+const kernel = new TextlintKernel();
+
+function buildKernelOptions(ruleNames) {
+  const descriptor = new TextlintKernelDescriptor({
     rules: buildRules(ruleNames),
     filterRules: [],
     plugins: [{ pluginId: '@textlint/textlint-plugin-text', plugin: textlintPluginText, options: true }],
   });
+  return { ext: '.txt', filePath: 'input.txt', ...descriptor.toKernelOptions() };
 }
 
 // ルール集合ごとに（サーバー起動後、初回の検査時に）一度だけ構築してキャッシュする。
-const lintersByRuleNamesKey = new Map();
-function getLinterFor(ruleNames) {
+const kernelOptionsByRuleNamesKey = new Map();
+function getKernelOptionsFor(ruleNames) {
   const key = ruleNames.join(',');
-  const cached = lintersByRuleNamesKey.get(key);
+  const cached = kernelOptionsByRuleNamesKey.get(key);
   if (cached) return cached;
-  const linter = createLinter({ descriptor: buildDescriptor(ruleNames) });
-  lintersByRuleNamesKey.set(key, linter);
-  return linter;
+  const options = buildKernelOptions(ruleNames);
+  kernelOptionsByRuleNamesKey.set(key, options);
+  return options;
 }
 
 // kuromoji の位置補正は依存パッチで行う。textlint の range は UTF-16 のまま返す。
 export async function proofread(text) {
-  const linter = getLinterFor(selectRuleNames(text));
-  const result = await linter.lintText(text, 'input.txt');
+  const result = await kernel.lintText(text, getKernelOptionsFor(selectRuleNames(text)));
   return result.messages.map(message => {
     const [start, end] = message.range;
     return { start, end, message: `${message.message}（${message.ruleId}）` };
