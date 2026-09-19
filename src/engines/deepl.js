@@ -20,9 +20,16 @@ import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
 
-// DeepL のテキスト翻訳はリクエスト全体で 128KiB の上限がある。JSON のオーバーヘッド分を見込み、
-// 安全マージンを取った値。呼び出し側はこれを超えるテキストを送信前に拒否する（このモジュールは呼ばない）。
+// 呼び出し側（create-server.js）が、実際に送信を試みる前の安価な早期フィルタとして使う
+// 原文の概算バイト数上限。引用符・改行・制御文字等は JSON エスケープで増幅するため、
+// この値だけでは 128KiB のリクエスト全体制限を正確には保証できない（あくまで目安）。
+// 実際に送信する JSON 本文のバイト数に対する正確なガードは MAX_REQUEST_BYTES で行う。
 export const MAX_TEXT_BYTES = 100_000;
+
+// DeepL のテキスト翻訳はリクエスト全体で 128KiB（131072 バイト）の上限がある。
+// JSON エスケープによる増幅（例: 引用符だらけの原文は `"` → `\"` で2倍になる）を吸収する
+// 安全マージンを取った値。JSON.stringify した実際の本文サイズをこれと比較して送信前に拒否する。
+export const MAX_REQUEST_BYTES = 120_000;
 
 const REQUEST_TIMEOUT_MS = 15_000;
 const OP_READ_TIMEOUT_MS = 60_000; // 1Password 側のユーザー操作（生体認証等）を待てる猶予。
@@ -81,6 +88,11 @@ function classifyStatus(status) {
 }
 
 export async function translate(text, targetLang, signal) {
+  const requestBody = JSON.stringify({ text: [text], target_lang: targetLang });
+  if (Buffer.byteLength(requestBody, 'utf8') > MAX_REQUEST_BYTES) {
+    throw new DeeplTranslationError('too-large', '選択範囲が大きすぎるため翻訳できません。範囲を小さくしてください。');
+  }
+
   const apiKey = await resolveApiKey(signal);
 
   const timeoutSignal = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
@@ -94,7 +106,7 @@ export async function translate(text, targetLang, signal) {
         'Authorization': `DeepL-Auth-Key ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ text: [text], target_lang: targetLang }),
+      body: requestBody,
       signal: combinedSignal,
     });
   } catch (error) {

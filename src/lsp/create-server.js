@@ -132,6 +132,10 @@ export function createServer({ transformations, inspections, translations = [] }
   // クライアントから呼ばれる（列挙・resolve の経路からは呼ばれない）。
   connection.onExecuteCommand(async (params, token) => {
     if (params.command !== TRANSLATE_COMMAND) return;
+    // onCodeAction は無効時に候補自体を隠すが、command はクライアントが直接呼べる独立した
+    // 経路なので、実行側でも無効化設定と必要なクライアント機能を確認する（無効化を隠すだけの
+    // 対策にしない。外部送信の前に必ず拒否する）。
+    if (!translationEnabled || !versionedEdits) return;
     const [arg] = params.arguments ?? [];
     const document = arg && documents.get(arg.uri);
     const provider = translations.find(item => item.id === arg?.id);
@@ -163,7 +167,12 @@ export function createServer({ transformations, inspections, translations = [] }
         notifyError('翻訳中に文書が変更されたため、結果を破棄しました。');
         return;
       }
-      await connection.workspace.applyEdit(makeEdit(document, arg.range, translated));
+      const result = await connection.workspace.applyEdit(makeEdit(document, arg.range, translated));
+      // applyEdit は例外を投げず { applied: false } を返すことがある（クライアント側の都合等）。
+      // 翻訳自体は完了・課金済みの可能性があるため、黙って捨てず必ず案内する。自動再試行はしない。
+      if (!result.applied) {
+        notifyError('翻訳結果を反映できませんでした。文書を確認し、必要なら翻訳をやり直してください。');
+      }
     } catch (error) {
       notifyError(translationErrorMessage(error));
     } finally {

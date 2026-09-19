@@ -11,7 +11,7 @@ import { createMessageConnection, StreamMessageReader, StreamMessageWriter } fro
 // 副作用（外部送信・課金）を伴う操作なので、実行はユーザーが明示的に選択したときの
 // workspace/executeCommand 経由でのみ起きる必要がある。
 
-function startClient(t, { initializationOptions } = {}) {
+function startClient(t, { initializationOptions, applyEditResult = { applied: true } } = {}) {
   const child = spawn(process.execPath, ['test/fixtures/test-translation-server.js', '--stdio']);
   let errors = '';
   child.stderr.on('data', chunk => { errors += chunk; });
@@ -19,7 +19,7 @@ function startClient(t, { initializationOptions } = {}) {
   const showMessageRequests = [];
   const applyEditRequests = [];
   rpc.onRequest('window/showMessageRequest', params => { showMessageRequests.push(params); return null; });
-  rpc.onRequest('workspace/applyEdit', params => { applyEditRequests.push(params); return { applied: true }; });
+  rpc.onRequest('workspace/applyEdit', params => { applyEditRequests.push(params); return applyEditResult; });
   rpc.listen();
   t.after(() => { rpc.dispose(); child.kill(); assert.equal(errors, ''); });
   return { rpc, showMessageRequests, applyEditRequests, initializationOptions };
@@ -146,7 +146,7 @@ test('stdio LSP translate: a second concurrent execution on the same document is
 });
 
 test('stdio LSP translate: initializationOptions.translation.enabled: false disables the feature entirely', { timeout: 10000 }, async t => {
-  const { rpc } = startClient(t);
+  const { rpc, applyEditRequests } = startClient(t);
   const initResult = await initialize(rpc, { translation: { enabled: false } });
   assert.equal(initResult.capabilities.executeCommandProvider, undefined);
   await openDocument(rpc);
@@ -154,6 +154,30 @@ test('stdio LSP translate: initializationOptions.translation.enabled: false disa
     textDocument: { uri: URI }, range: RANGE, context: { diagnostics: [] },
   });
   assert.equal(actions.some(a => a.command?.command === 'text-tools.translate'), false);
+
+  // 無効化は候補の非表示だけに頼らない: クライアントが列挙をバイパスして直接
+  // workspace/executeCommand を送っても、実行ハンドラー側で拒否されること（防御的な多層チェック）。
+  // "throwing" プロバイダーを使うので、もし拒否されず実行されればサーバーが例外を出す。
+  await rpc.sendRequest('workspace/executeCommand', {
+    command: 'text-tools.translate',
+    arguments: [{ id: 'test.translate.throwing', uri: URI, version: 1, range: RANGE }],
+  });
+  assert.equal(applyEditRequests.length, 0);
+
+  await rpc.sendRequest('shutdown');
+  await rpc.sendNotification('exit');
+});
+
+test('stdio LSP translate: a client-reported applyEdit failure is surfaced, not silently ignored', { timeout: 10000 }, async t => {
+  const { rpc, applyEditRequests, showMessageRequests } = startClient(t, { applyEditResult: { applied: false } });
+  await initialize(rpc);
+  await openDocument(rpc);
+  await rpc.sendRequest('workspace/executeCommand', {
+    command: 'text-tools.translate',
+    arguments: [{ id: 'test.translate.working', uri: URI, version: 1, range: RANGE }],
+  });
+  assert.equal(applyEditRequests.length, 1); // 翻訳は実行され、適用が試みられた。
+  assert.equal(showMessageRequests.length, 1); // だが反映失敗が案内された。
   await rpc.sendRequest('shutdown');
   await rpc.sendNotification('exit');
 });

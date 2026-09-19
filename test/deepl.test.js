@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, writeFile as writeFileText, chmod, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { translate, MAX_TEXT_BYTES, DeeplTranslationError } from '../src/engines/deepl.js';
+import { translate, MAX_TEXT_BYTES, MAX_REQUEST_BYTES, DeeplTranslationError } from '../src/engines/deepl.js';
 
 function stubFetch(t, handler) {
   const original = globalThis.fetch;
@@ -132,8 +132,26 @@ test('translate classifies caller cancellation as kind "cancelled"', async t => 
   });
 });
 
-test('MAX_TEXT_BYTES leaves headroom under the DeepL 128KiB request limit', () => {
+test('MAX_TEXT_BYTES and MAX_REQUEST_BYTES leave headroom under the DeepL 128KiB request limit', () => {
   assert.ok(MAX_TEXT_BYTES < 128 * 1024);
+  assert.ok(MAX_REQUEST_BYTES < 128 * 1024);
+});
+
+test('translate rejects text whose JSON-escaped body exceeds MAX_REQUEST_BYTES, even under MAX_TEXT_BYTES raw bytes', async t => {
+  process.env.DEEPL_AUTH_KEY = 'test-key:fx';
+  t.after(() => { delete process.env.DEEPL_AUTH_KEY; });
+  // 引用符だらけの原文は JSON エスケープ（" -> \"）で本文サイズがほぼ倍になる。
+  // 原文バイト数は MAX_TEXT_BYTES 未満でも、実際に送信する本文は MAX_REQUEST_BYTES を超える。
+  const text = '"'.repeat(MAX_TEXT_BYTES - 1000);
+  assert.ok(Buffer.byteLength(text, 'utf8') < MAX_TEXT_BYTES);
+  const calls = stubFetch(t, () => { throw new Error('must not be called'); });
+
+  await assert.rejects(translate(text, 'JA'), error => {
+    assert.ok(error instanceof DeeplTranslationError);
+    assert.equal(error.kind, 'too-large');
+    return true;
+  });
+  assert.equal(calls.length, 0);
 });
 
 test('translate does not log the API key or the text', async t => {
