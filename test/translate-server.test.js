@@ -157,10 +157,12 @@ test('stdio LSP translate: initializationOptions.translation.enabled: false disa
 
   // 無効化は候補の非表示だけに頼らない: クライアントが列挙をバイパスして直接
   // workspace/executeCommand を送っても、実行ハンドラー側で拒否されること（防御的な多層チェック）。
-  // "throwing" プロバイダーを使うので、もし拒否されず実行されればサーバーが例外を出す。
+  // "working" プロバイダーを使う（"throwing" だと、ガードが無くても例外で applyEdit に
+  // 到達しないため、このテストがガードの有無を区別できない）。ガードが無ければ本当に
+  // 翻訳が成功し applyEdit が呼ばれてしまうので、その場合だけこのアサーションが落ちる。
   await rpc.sendRequest('workspace/executeCommand', {
     command: 'text-tools.translate',
-    arguments: [{ id: 'test.translate.throwing', uri: URI, version: 1, range: RANGE }],
+    arguments: [{ id: 'test.translate.working', uri: URI, version: 1, range: RANGE }],
   });
   assert.equal(applyEditRequests.length, 0);
 
