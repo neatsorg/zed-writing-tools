@@ -156,7 +156,7 @@ kuromoji 0.1.2 への[固定パッチ](patches/README.md)で、トークン位�
 
 将来の textlint 接続を容易にするため Node.js と `vscode-languageserver` を採用しました。
 初期版は既知の LSP 3.17 系ライブラリ 9.0.1 に固定しています。
-本プロジェクト自体の公開ライセンスは未決定です。
+本プロジェクト自体の公開ライセンスは GPL-3.0-or-later です（詳細は末尾の「ライセンス」節）。
 
 校正エンジンには [textlint](https://github.com/textlint/textlint) と
 [textlint-rule-preset-japanese](https://github.com/textlint-ja/textlint-rule-preset-japanese)
@@ -176,3 +176,41 @@ ICS MEDIA 辞書（`textlint-rule-preset-icsmedia`、GitHub 直接参照で npm 
 無差別な自作実装は誤りやすいため、テーブルを持つ既存実装を再利用する判断です。
 英字・数字・記号は既存の英数字変換と同じ方式（コードポイントのオフセット、記号は
 jaconv の ASCII テーブルを 1 文字ずつ適用）で自前実装し、英数字・空白は記号変換の対象外にしています。
+
+## ライセンス
+
+Copyright (C) 2026 Sayawaka
+
+本プロジェクト（`extension/`・`extension-proofreading/`・`src/`・`scripts/` 以下の
+オリジナルコード）は [GNU General Public License v3.0 以降](LICENSE)（GPL-3.0-or-later）の
+もとで配布します。全文は [`LICENSE`](LICENSE) を参照してください。
+
+```
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+```
+
+同梱する npm・Cargo の依存（サーバー配布物・Wasm 拡張が使う third-party パッケージ）は、
+それぞれ MIT・Apache-2.0・BSD 系など元のライセンスのまま保持します。GPLv3 とは別の
+条件のまま個別に表示する必要があるため、GPLv3 化したとは表示しません。配布物ごとの
+一覧・ライセンス全文は各配布物の `THIRD_PARTY_NOTICES`（生成: `npm run build:server-dist`、
+`npm run build:rust-notices`）に記録されます。校正拡張が同梱する mecab-ipadic 辞書は
+NAIST-2003 条件の独立データで、これも GPLv3 化の対象に含めていません
+（詳細は [docs/license-audit.md](docs/license-audit.md)）。
+
+### Corresponding Source（対応するソース）
+
+GPLv3 で必須となる「対応するソース」は本リポジトリそのものです。ビルド対象の全ソース
+（`extension/`・`extension-proofreading/`・`src/`）、依存バージョンを固定する
+`package-lock.json`・`Cargo.lock`、kuromoji 0.1.2 への[固定パッチ](patches/README.md)、
+配布物を再現するビルド手順（本 README の「開発」節・「サーバー配布物と固定パスの解消」節）を
+すべて追跡しています。`dist/` 自体は生成物のため Git 対象外ですが、上記の手順で
+同一内容を再生成できます。リリースを GitHub Releases 等で配布する場合は、各リリースが
+対応するコミット／タグの本リポジトリの内容と一致するようにします。

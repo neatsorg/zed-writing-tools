@@ -201,6 +201,7 @@ const distPackageJson = {
   name: `${rootPackageJson.name}-${targetName}`,
   version,
   private: true,
+  license: rootPackageJson.license,
   type: 'module',
   dependencies: Object.fromEntries(
     target.dependencies.map(name => [name, rootPackageJson.dependencies[name]]),

@@ -5,16 +5,16 @@
 
 追記（2026-09-19）: 下記「未解決事項」のうち、CC-BY-3.0 依存経路の除去・
 辞書表示の識別明確化・表示生成スクリプトの修正（npm 側・Rust 側とも）は対応済み。
-残る未完了項目は GPLv3 本文・LICENSE 宣言・Corresponding Source の整備（末尾の
-「現在の表示生成処理で修正が必要な点」の項目 6）のみ。詳細は各節に追記した。
+末尾の「現在の表示生成処理で修正が必要な点」の項目 6（GPLv3 本文・LICENSE 宣言・
+Corresponding Source の整備）も対応済み。詳細は各節に追記した。
 
 ## 結論
 
-本プロジェクトに GPLv3 を採用する方針は維持できる。主要なコード依存に
+本プロジェクトに GPLv3（GPL-3.0-or-later）を採用する方針は維持できる。主要なコード依存に
 GPLv3 採用を阻む条件は見つからなかった。CC-BY-3.0 データの依存経路除去、
-辞書表示の識別明確化、表示生成スクリプトの修正は完了した。GPLv3 本文・
-LICENSE 宣言・リリース版の Corresponding Source 整備がリリース前の
-残作業として残る。
+辞書表示の識別明確化、表示生成スクリプトの修正、GPLv3 本文・LICENSE 宣言・
+Corresponding Source の整備はすべて完了した。残るのは GitHub リポジトリ公開時に
+README 等へ実際の URL を反映することのみ。
 
 ## 対象と確認方法
 
@@ -122,9 +122,16 @@ GPL の派生物として組み込むことは区別が必要。提供者によ�
    解決し、それ以外は汎用 SPDX テンプレート（著作権者欄の無いもののみ、
    `scripts/license-texts/` に Unicode-3.0・Zlib・Unlicense・0BSD を追加）で解決した。
    いずれの手段でも解決できない場合はエラーにする（npm 側と同じ方針、推測での補完はしない）。
-6. 未着手。GPLv3 本文、本体のライセンス宣言、リリース版に対応するソース・ビルド手順・
-   パッチ・必要な依存ソースの提供を整える。トップレベルの GitHub 自動ソース ZIP だけで
-   依存まで含めた Corresponding Source が満たされるとは限らない。
+6. 対応済み（2026-09-19）。ユーザーの確認により、著作権者を Sayawaka、バージョンを
+   GPL-3.0-or-later に確定した。リポジトリ直下に GPLv3 公式全文（gnu.org/licenses/gpl-3.0.txt
+   をそのまま取得、674 行、差分なしで確認済み）を `LICENSE` として追加。`package.json`
+   （`license`・`author`）、両 `Cargo.toml`（`license`）、両 `extension.toml`（`authors`）に
+   宣言を追加し、配布物側の生成 `package.json`（`scripts/build-server-dist.js`）にも
+   `license` を伝播させた。README に「ライセンス」節を新設し、本体コードの GPLv3 表示、
+   同梱依存は元のライセンスのまま保持する旨、Corresponding Source（本リポジトリの全ソース・
+   ロックファイル・パッチ・ビルド手順で再現可能）を明記した。GitHub リポジトリ URL は
+   未確定のため、README・LICENSE とも URL を含まない相対的な書き方にとどめている
+   （リポジトリ名は `zed-japanese-writing-tools` を予定と共有を受けたが、公開時に別途反映）。
 
-本調査では上記のうち項目 6（ライセンス付与・公開・Corresponding Source の整備）は
-未実施。GPLv3-only / or-later の明示も、LICENSE を整える段階で確定する。
+本調査の項目 6（ライセンス付与・公開・Corresponding Source の整備）は完了した。
+残る対応は、GitHub リポジトリを実際に作成した時点で README 等に URL を反映することのみ。
