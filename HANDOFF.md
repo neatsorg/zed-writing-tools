@@ -1,7 +1,17 @@
-# Zed Text Tools — 開発ハンドオフ
+# Zed Writing Tools — 開発ハンドオフ
 
 作成日: 2026-09-18
-プロジェクト名・ディレクトリ名は仮称: `zed-text-tools`
+プロジェクト名・ディレクトリ名: `zed-writing-tools`（2026-09-19、仮称`zed-text-tools`から改称。
+npmパッケージ名・Cargoクレート名も追随。Zed拡張ID（`text-tools`/`text-tools-proofreading`/
+`text-tools-translation`）は実機に既にデプロイ済みのため変更していない）
+
+## 文書統計（字数カウンター）の管理先について（2026-09-19）
+
+`docs/status-bar-research.md` で調査したステータスバーの文書統計表示は、Zed本体（Rust/GPUI）への
+パッチとしてしか実現できないため、実装・パッチ管理は本リポジトリではなく新設した
+[`../zed-word-counter`](../zed-word-counter) で行う。zed-i18n はそのパッチの取り込み側（バージョン指定・
+適用・翻訳追加）を担当し、本家 zed-industries/zed へのPRも zed-word-counter からではなく本家の
+フォークの機能ブランチから提出する。本リポジトリの変換・校正・翻訳のLSP拡張群は移動しない。
 
 ## 最新更新: 形態素解析のサロゲートペア対応
 
@@ -164,7 +174,7 @@ textlint 接続のための調査を実施した。詳細データは `docs/text
 
 2026-09-19: 拡張分割を実装した。
 - `extension-proofreading/`（ID: `text-tools-proofreading`、Cargo crate 名
-  `zed-text-tools-proofreading`）を新設。`extension/src/lib.rs` と同じ自動解決ロジック
+  `zed-writing-tools-proofreading`）を新設。`extension/src/lib.rs` と同じ自動解決ロジック
   （`node_binary_path()` ＋作業ディレクトリ内のバージョン付き配布物）だが、配布物ディレクトリ名を
   `text-tools-proofreading-server` に分け、`src/lsp/proofreading-server.js` を指す。
 - `src/features.js` を `src/features/conversion.js`（`transformations`）と

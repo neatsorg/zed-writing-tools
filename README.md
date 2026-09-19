@@ -1,4 +1,4 @@
-# Zed Text Tools
+# Zed Writing Tools
 
 開発初期版。`.txt`（Zed の `Plain Text`）に対して 3 つの機能を提供します。
 
