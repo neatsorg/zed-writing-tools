@@ -18,4 +18,10 @@ export const TARGETS = {
       '@textlint/kernel', '@textlint/textlint-plugin-text', 'kuromoji',
     ],
   },
+  translation: {
+    extensionId: 'text-tools-translation',
+    distDirName: 'text-tools-translation-server',
+    serverEntry: 'src/lsp/translation-server.js',
+    dependencies: ['vscode-languageserver', 'vscode-languageserver-textdocument'],
+  },
 };

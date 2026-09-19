@@ -270,6 +270,52 @@ Code Action（0 件）・診断配信（ら抜き言葉検出、`source: "text-t
 （バックアップ済み）した状態で言語サーバーを再起動し、`examples/proofread.txt` の指摘が
 設定なしでも表示されることを確認した。開発順序 6 のレビュー対応は完了。
 
+2026-09-19: GPLv3 公開に向けたライセンス整理を実施した（詳細は `docs/license-audit.md`）。
+CC-BY-3.0 依存経路の除去（`textlint` パッケージから `@textlint/kernel` 直接利用へ移行）、
+Rust 側ライセンス表示生成スクリプト（`scripts/build-rust-notices.js`）の新規実装、
+辞書（mecab-ipadic）の表示区別、GPLv3 本文（`LICENSE`）の追加と各種宣言
+（`package.json`／`Cargo.toml`／`extension.toml` の `license`／`author`／`authors`）、
+Corresponding Source の考え方の明記（README「ライセンス」節）を完了した。
+著作権者は Sayawaka、バージョンは GPL-3.0-or-later。公開先 GitHub リポジトリの実 URL は
+未確定（想定名 `zed-japanese-writing-tools` の共有は受けている）。
+
+2026-09-19: 開発順序 7（DeepL 翻訳の接続）を実装した。校正拡張とは別の 3 つ目の独立拡張
+（`extension-translation/`、ID: `text-tools-translation`）として追加し、
+「DeepLで日本語に翻訳」「DeepLで英語に翻訳」（`EN-US`）の 2 Code Action を提供する。
+
+ユーザーからの最重要要求は「Code Action の候補表示だけでは通信・課金が発生しないこと」。
+既存の `transformations`（変換）は、クライアントが `codeAction.resolveSupport` を宣言しない
+場合に列挙時点でその場 resolve される実装になっており（`src/lsp/create-server.js` の
+`lazyEdits` 分岐）、これは純粋なローカル変換では無害だが、外部送信を伴う処理をそのまま乗せると
+危険だった。対策として、翻訳は `data`／`edit` ではなく LSP の `command`
+（`workspace/executeCommand`）で実行する別経路にした。`command` はクライアントがユーザーの
+実際の選択時にのみ呼ぶため、列挙・resolve の経路を一切通らない。`createServer` に
+`translations` 引数を追加し、`connection.onExecuteCommand` で
+文書バージョンの確認（実行前・完了後）・選択範囲のサイズガード（既定 100000 バイト、
+`provider.maxTextBytes` 経由）・同一文書への多重実行の抑止・キャンセル・エラー種別ごとの
+`window/showMessageRequest` 案内を行い、成功時のみ `connection.workspace.applyEdit` で編集する。
+
+APIキー（`DEEPL_AUTH_KEY`）は環境変数のみで受け渡し、呼び出しのたびに読む
+（`src/engines/deepl.js`）。設定ファイル・ログ・文書には一切書かせない。送信先 URL は
+キー形式（Free は `:fx` 接尾辞）から自動判定した固定値。追加 npm 依存を避けるため、
+公式 SDK（deepl-node）ではなく Node 標準の `fetch`／`AbortSignal`
+（`AbortSignal.any`／`AbortSignal.timeout`）を直接使う実装にした。
+
+自動テスト: `test/deepl.test.js`（`fetch` をモックした単体テスト、13 件）、
+`test/translate-server.test.js`（`test/fixtures/dummy-translation.js`・
+`test/fixtures/test-translation-server.js` を使った stdio E2E、7 件）。特に「候補列挙では
+即座に例外を投げるダミーが呼ばれない」ことをテストの中心的な検証手段にしている
+（`throwingTranslate`）。`npm test` は既存分と合わせて 44 件すべて成功。
+`cargo build --manifest-path extension-translation/Cargo.toml --target wasm32-wasip2 --release
+--locked` の成功、`npm run build:server-dist -- translation` で生成した配布物を単体で起動し
+`initialize` に `executeCommandProvider` 付きで正常応答することも確認済み。
+
+**未確認（ユーザー側で実施が必要）**: Zed GUI での実機確認全般。
+候補表示だけでは通信が起きないことの目視確認、GUI 起動した Zed の子プロセス（言語サーバー）に
+`DEEPL_AUTH_KEY` が実際に届くか（[Zed の環境変数ドキュメント](https://zed.dev/docs/environment)
+にある通り、ターミナル起動とデスクトップ起動で挙動が異なりうる）、実キーでの動作・Undo の確認。
+詳細は `docs/architecture.md` 開発順序 7 と README「翻訳拡張（DeepL 接続）」節を参照。
+
 以下は元のハンドオフより優先する、開発開始後の合意と状況です。
 
 - 動作確認先は Linux の多言語対応版 Zed 1.20.2。接続情報と設置先は Git 対象外の `DEVELOPMENT.local.md` に記録。

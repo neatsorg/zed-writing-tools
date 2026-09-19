@@ -3,6 +3,8 @@ extension/target/
 extension/extension.wasm
 extension-proofreading/target/
 extension-proofreading/extension.wasm
+extension-translation/target/
+extension-translation/extension.wasm
 dist/
 .agents/
 .codex/

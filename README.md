@@ -1,10 +1,11 @@
 # Zed Text Tools
 
-開発初期版。`.txt`（Zed の `Plain Text`）に対して 2 つの機能を提供します。
+開発初期版。`.txt`（Zed の `Plain Text`）に対して 3 つの機能を提供します。
 
 - 変換拡張: 選択範囲の英数字・英字・数字・記号・半角カナ／全角カナ、ひらがな／カタカナを変換します
   （空白は記号変換の対象外、無選択時は何もしません）。
 - 校正拡張: textlint（preset-japanese）による日本語校正を情報レベルの診断として表示します。
+- 翻訳拡張: 選択範囲を DeepL API で翻訳し置き換えます（利用者自身の APIキーが必要）。
 
 ## 構造
 
@@ -12,16 +13,23 @@
 - `src/engines/kana.js`: ひらがな／カタカナの変換。同様に純粋関数。
 - `src/engines/proofread.js`: textlint（preset-japanese）による校正。同様に純粋な文字列入出力で、
   LSP・Zed に依存しません。
+- `src/engines/deepl.js`: DeepL API による翻訳。同様に LSP・Zed に依存しない文字列入出力
+  （`translate(text, targetLang, signal)`）。認証・通信・エラー分類をここに閉じます。
 - `src/features/conversion.js`: 変換の機能 ID・表示名・変換関数の登録。
 - `src/features/proofreading.js`: 校正の機能登録。
-- `src/lsp/create-server.js`: 文書同期、UTF-16 位置、Code Action、Diagnostics を扱う LSP サーバー本体。
-  `{ transformations, inspections }` を受け取り、拡張ごとに異なる機能サブセットで起動できます。
-- `src/lsp/server.js`: 変換拡張のエントリーポイント。`src/lsp/proofreading-server.js`: 校正拡張のエントリーポイント。
+- `src/features/translation.js`: 翻訳の機能登録（対象言語ごとの Code Action・サイズ上限）。
+- `src/lsp/create-server.js`: 文書同期、UTF-16 位置、Code Action、Diagnostics、翻訳の実行
+  （`workspace/executeCommand`）を扱う LSP サーバー本体。`{ transformations, inspections, translations }`
+  を受け取り、拡張ごとに異なる機能サブセットで起動できます。
+- `src/lsp/server.js`: 変換拡張のエントリーポイント。`src/lsp/proofreading-server.js`: 校正拡張の
+  エントリーポイント。`src/lsp/translation-server.js`: 翻訳拡張のエントリーポイント。
 - `extension/`: 変換用の Zed 拡張（ID: `text-tools`）。
   `extension-proofreading/`: 校正用の Zed 拡張（ID: `text-tools-proofreading`）。
+  `extension-translation/`: 翻訳用の Zed 拡張（ID: `text-tools-translation`）。
 
-変換拡張は校正エンジン（textlint）を import しないため、その依存を読み込みません。
-拡張は変換用・校正用に分かれていますが、LSP サーバー本体とエンジンは共通コードです。
+各拡張は他の機能のエンジンを import しないため、それぞれ無関係な依存を読み込みません
+（変換拡張は textlint・DeepL 通信のコードを読み込まない、翻訳拡張は textlint を読み込まない、等）。
+拡張は機能ごとに分かれていますが、LSP サーバー本体とエンジンは共通コードです。
 
 半角カナ／全角カナ、ひらがな／カタカナの変換は [jaconv](https://github.com/kazuhikoarase/jaconv)
 （MIT、依存なし）を利用します。半角カナの濁点・半濁点の結合（`ｶﾞ` ↔ `ガ`）は同ライブラリに委ねます。
@@ -97,13 +105,17 @@ npm run deploy:server-dev -- conversion    # 変換拡張の作業ディレク�
 
 npm run build:server-dist -- proofreading  # dist/text-tools-proofreading-server/<version>/ を生成
 npm run deploy:server-dev -- proofreading  # 校正拡張の作業ディレクトリへ配置
+
+npm run build:server-dist -- translation   # dist/text-tools-translation-server/<version>/ を生成
+npm run deploy:server-dev -- translation   # 翻訳拡張の作業ディレクトリへ配置
 ```
 
-配置後、Zed の設定に `lsp.text-tools.binary`／`lsp.text-tools-proofreading.binary` を
-書かなければ自動解決されます（`npm run setup:example` が生成する設定は変換拡張の `binary` を
-明示するので、そちらを使う場合はプロジェクト内の `src/` を直接参照します。コード変更を都度
-配布物に反映せず素早く試したいときに向いています）。設定変更後、または配布物を再生成・再配置
-した後は言語サーバーの再起動（コマンドパレット: `zed: restart language server`）が必要です。
+配置後、Zed の設定に `lsp.text-tools.binary`／`lsp.text-tools-proofreading.binary`／
+`lsp.text-tools-translation.binary` を書かなければ自動解決されます（`npm run setup:example` が
+生成する設定は変換拡張の `binary` を明示するので、そちらを使う場合はプロジェクト内の `src/` を
+直接参照します。コード変更を都度配布物に反映せず素早く試したいときに向いています）。
+設定変更後、または配布物を再生成・再配置した後は言語サーバーの再起動
+（コマンドパレット: `zed: restart language server`）が必要です。
 
 生成物・アーカイブは Git 対象外です。クローンした環境では上記コマンドで再生成できます。
 公開先が決まった後は、同じ生成手順を CI で実行し、拡張が起動時に GitHub Releases から
@@ -142,8 +154,60 @@ kuromoji 0.1.2 への[固定パッチ](patches/README.md)で、トークン位�
 （`test/server.test.js` が `test/fixtures/` のテスト専用ダミー検査エンジンを注入して検証。
 製品コードにテスト用の分岐は追加していません）。
 
+### 翻訳拡張（DeepL 接続）
+
+`extension-translation/`（ID: `text-tools-translation`）が選択範囲を DeepL API で翻訳し、
+その場で置き換えます。「DeepLで日本語に翻訳」「DeepLで英語に翻訳」（`EN-US`）の 2 つの
+Code Action を提供します。翻訳元言語は DeepL 側の自動判定に任せます（`source_lang` を送りません）。
+
+**候補を表示するだけでは通信しません。** Code Action の一覧（`textDocument/codeAction`）には
+実行内容（LSP の `command`）だけを持たせ、実際の翻訳・DeepL への送信は、ユーザーがその
+Code Action を選択したときに送られる `workspace/executeCommand` の中でのみ行います
+（`src/lsp/create-server.js`）。変換のローカル処理と違い、副作用（外部送信・課金）を伴うため、
+この 2 つの経路を明確に分けています。翻訳は既定で有効です
+（`initialization_options.translation.enabled: false` で無効化できます）。
+
+**APIキーの設定**: 環境変数 `DEEPL_AUTH_KEY` にご自身の DeepL APIキーを設定してから
+言語サーバー（Zed）を起動してください。`.zed/settings.json` やこのリポジトリにキーを
+書き込まないでください（`.env`／`.env.*` は Git 対象外です。変数名の見本として
+`.env.example` を用意していますが、実際の値はここにも書きません）。キー未設定のまま
+翻訳を実行すると、設定方法を案内するメッセージを表示します（サーバー自体は起動します）。
+送信先 URL はキー形式（Free プランは `:fx` で終わる）から自動判定し、固定です。設定で
+変更することはできません。
+
+Zed 公式ドキュメント（[Zed の環境変数について](https://zed.dev/docs/environment)）によれば、
+デスクトップランチャー等の GUI から起動した場合、Zed はホームディレクトリで**ログインシェルを
+起動してその環境変数を読み取り**ます。zsh の場合、ログインシェルが読むのは `.zshenv`・
+`.zprofile` で、対話シェル専用の `.zshrc` は読まれないことがあります。GUI 起動でも確実に
+届けたい場合は **`.zshrc` ではなく `.zprofile`**（または OS 側の `~/.config/environment.d/`）に
+設定してください。
+
+**1Password 等のシークレット管理ツールと組み合わせる場合**: `DEEPL_AUTH_KEY` の代わりに
+`DEEPL_AUTH_KEY_OP_REF` に 1Password の参照文字列（例:
+`op://Personal/<item>/<field>`。これ自体は秘密ではありません）を設定できます。この変数は
+非機密なので `.zprofile` に無条件で書いて構いません。実際の 1Password 認証（`op read` の実行）は
+**翻訳の Code Action を初めて実行した瞬間**まで遅延し、成功した値はその言語サーバープロセスが
+生きている間だけメモリに保持して使い回します（エディタ起動のたびに認証を求めると、翻訳を
+使わないセッションでも毎回認証が挟まってしまうため、あえて使用時まで遅延させています）。
+`DEEPL_AUTH_KEY` が設定されている場合はそちらを優先し、`op` は呼びません。
+[1Password CLI](https://developer.1password.com/docs/cli/) (`op`) がインストール・認証済みで
+`PATH` 上にある必要があります。
+
+**DeepL への送信について**: 選択した範囲のテキストは DeepL のサーバーへ送信されます。
+利用料金・上限、無料／有料プランごとのデータ取り扱いの違いは
+[DeepL API の利用規約](https://www.deepl.com/en/pro-license)・
+[プライバシーポリシー](https://www.deepl.com/en/privacy)を確認してください。本プロジェクトの
+GPLv3 ライセンス（下記「ライセンス」節）とは別に、DeepL サービス自体の利用条件が適用されます。
+
+選択範囲がおおむね 100000 バイト（UTF-8）を超える場合は、DeepL のリクエストサイズ上限に
+対する安全マージンとして送信前に拒否します（自動分割は行いません）。翻訳中に文書が変更された
+場合は結果を破棄します。同一文書への多重実行は抑止します。エラー（認証失敗・利用上限・
+混雑・タイムアウト・キー未設定・1Password 解決失敗等）は種別ごとに案内し、原文・訳文・
+APIキーはログに出しません（`src/engines/deepl.js`）。
+
 ここまで（任意フォルダーでの利用・変換機能の拡充・サーバー配布の整備・拡張分割・
-校正エンジンの接続）を実施済みです。次は DeepL の接続に進みます。
+校正エンジンの接続・DeepL 翻訳の接続）を実施済みです。実機での DeepL 接続確認（GUI 起動時の
+環境変数到達、実キーでの動作、Undo の確認）はユーザー確認待ちです。
 詳しい完了条件は [設計方針](docs/architecture.md) に記載しています。
 
 ## 技術選定の根拠
@@ -177,11 +241,17 @@ ICS MEDIA 辞書（`textlint-rule-preset-icsmedia`、GitHub 直接参照で npm 
 英字・数字・記号は既存の英数字変換と同じ方式（コードポイントのオフセット、記号は
 jaconv の ASCII テーブルを 1 文字ずつ適用）で自前実装し、英数字・空白は記号変換の対象外にしています。
 
+DeepL への通信には、公式 SDK（[deepl-node](https://github.com/DeepL/deepl-node)、MIT）ではなく
+Node 標準の `fetch`／`AbortSignal` を直接使う実装を採用しました。初版はテキスト翻訳
+（`/v2/translate`）1 エンドポイントしか使わないため、追加の npm 依存とその推移的依存のライセンス
+監査を増やさずに実装できます。将来 SDK が提供する機能（用語集、文書翻訳等）が必要になれば、
+その時点で deepl-node への切り替えを検討します。
+
 ## ライセンス
 
 Copyright (C) 2026 Sayawaka
 
-本プロジェクト（`extension/`・`extension-proofreading/`・`src/`・`scripts/` 以下の
+本プロジェクト（`extension/`・`extension-proofreading/`・`extension-translation/`・`src/`・`scripts/` 以下の
 オリジナルコード）は [GNU General Public License v3.0 以降](LICENSE)（GPL-3.0-or-later）の
 もとで配布します。全文は [`LICENSE`](LICENSE) を参照してください。
 

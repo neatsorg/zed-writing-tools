@@ -17,43 +17,58 @@ Zed での日本語執筆を支援する。文字変換・校正・翻訳のエ�
 - 変換拡張（ID: `text-tools`。`extension/`）: 変換エンジンのみを有効にしてサーバーを起動する。
 - 校正拡張（ID: `text-tools-proofreading`。`extension-proofreading/`）:
   校正エンジンのみを有効にしてサーバーを起動する。
-- 共通コード（`src/`）: エンジン・LSP アダプター・機能登録。当面は同じリポジトリで両方の
+- 翻訳拡張（ID: `text-tools-translation`。`extension-translation/`）:
+  翻訳エンジン（DeepL）のみを有効にしてサーバーを起動する。
+- 共通コード（`src/`）: エンジン・LSP アダプター・機能登録。当面は同じリポジトリで 3 つの
   拡張と同居する。
 
-各拡張は別の言語サーバー ID を持ち、有効にする機能（`transformations`／`inspections`）を
-起動用のエントリーポイントで固定する。`src/lsp/create-server.js` は
-`{ transformations, inspections }` を引数に取る構成にしてあり、`src/lsp/server.js`
-（変換拡張、`inspections: []`）と `src/lsp/proofreading-server.js`
-（校正拡張、`transformations: []`）がそれぞれ `src/features/conversion.js`／
-`src/features/proofreading.js` から必要な機能だけを渡す。変換拡張は校正エンジン
-（textlint）を import しないため、その依存を読み込まない。両方の拡張を同時に導入しても、
-機能が重複したり 2 つのサーバーが同じ範囲を検査したりしない。
+各拡張は別の言語サーバー ID を持ち、有効にする機能（`transformations`／`inspections`／
+`translations`）を起動用のエントリーポイントで固定する。`src/lsp/create-server.js` は
+`{ transformations, inspections, translations }` を引数に取る構成にしてあり、
+`src/lsp/server.js`（変換拡張、`inspections: []`・`translations: []`）、
+`src/lsp/proofreading-server.js`（校正拡張、`transformations: []`・`translations: []`）、
+`src/lsp/translation-server.js`（翻訳拡張、`transformations: []`・`inspections: []`）が
+それぞれ `src/features/conversion.js`／`src/features/proofreading.js`／
+`src/features/translation.js` から必要な機能だけを渡す。各拡張は他の機能のエンジンを
+import しないため、無関係な依存を読み込まない。3 拡張を同時に導入しても、
+機能が重複したり複数のサーバーが同じ範囲を検査したりしない。
 
 サーバー配布物も分ける。拡張ごとに配布物ディレクトリ名（`text-tools-server`／
-`text-tools-proofreading-server`）を分け、校正拡張の配布物にのみ textlint 系の依存を
-含める（`extension/src/lib.rs`・`extension-proofreading/src/lib.rs` 参照）。
-配布物の生成・配置スクリプトの対応は、校正エンジン本体の実装（開発順序 6）で行う。
+`text-tools-proofreading-server`／`text-tools-translation-server`）を分け、
+校正拡張の配布物にのみ textlint 系の依存を含める（`extension/src/lib.rs`・
+`extension-proofreading/src/lib.rs`・`extension-translation/src/lib.rs` 参照）。
+配布物の生成・配置スクリプトは `scripts/targets.js` の `TARGETS` に対象ごとの定義を
+集約しており、新しい対象を追加してもスクリプト本体は変更不要（開発順序 6・7 で確認済み）。
 
 ## 責務の境界
 
 | 部分 | 責務 | 現在の配置 |
 | --- | --- | --- |
-| Zed 拡張（変換・校正） | サーバーの起動と設定。将来は取得・更新も担当 | `extension/`（変換）、`extension-proofreading/`（校正） |
-| サーバー本体 | LSP ハンドラーの組み立て。`{ transformations, inspections }` を受け取る | `src/lsp/create-server.js` |
-| 拡張ごとのエントリーポイント | 対象拡張向けの機能サブセットで `create-server.js` を起動する | `src/lsp/server.js`（変換用）、`src/lsp/proofreading-server.js`（校正用） |
-| LSP アダプター | 文書同期、位置変換、版管理、Code Action、Diagnostics | `src/lsp/` |
-| 機能登録 | エンジンの ID、表示名、実行関数を組み合わせる | `src/features/conversion.js`、`src/features/proofreading.js` |
-| 各エンジン | 文字列に対する変換・検査・将来の翻訳 | `src/engines/` |
+| Zed 拡張（変換・校正・翻訳） | サーバーの起動と設定。将来は取得・更新も担当 | `extension/`（変換）、`extension-proofreading/`（校正）、`extension-translation/`（翻訳） |
+| サーバー本体 | LSP ハンドラーの組み立て。`{ transformations, inspections, translations }` を受け取る | `src/lsp/create-server.js` |
+| 拡張ごとのエントリーポイント | 対象拡張向けの機能サブセットで `create-server.js` を起動する | `src/lsp/server.js`（変換用）、`src/lsp/proofreading-server.js`（校正用）、`src/lsp/translation-server.js`（翻訳用） |
+| LSP アダプター | 文書同期、位置変換、版管理、Code Action、Diagnostics、コマンド実行 | `src/lsp/` |
+| 機能登録 | エンジンの ID、表示名、実行関数を組み合わせる | `src/features/conversion.js`、`src/features/proofreading.js`、`src/features/translation.js` |
+| 各エンジン | 文字列に対する変換・検査・翻訳 | `src/engines/` |
 
 エンジンに LSP の URI・Range・Diagnostic や Zed 固有 API を渡さない。
 位置と重要度を LSP に変換する責務はアダプターに置く。
 変換の現行契約は文字列入力と文字列出力で、非同期処理と AbortSignal を受け取れる。
 校正エンジンは `{ start, end, message }`（UTF-16 オフセット、終了位置を含まない）の配列を返し、
 `diagnostics.js` が LSP の Diagnostics に変換する（`test/fixtures/dummy-inspection.js` の
-ダミーエンジンと同じ契約）。各機能の有効・無効は独立して設定できるようにする。
+ダミーエンジンと同じ契約）。翻訳エンジンも文字列入力・文字列出力（`translate(text, targetLang, signal)`）
+だが、外部送信・課金を伴うため実行経路を transformations とは分けている（次段落）。
+各機能の有効・無効は独立して設定できるようにする。
 
 文書の版を確認し、古い結果を適用しない。変換失敗時は原文を保持する。
-外部 API は候補列挙時に呼ばない。汎用の動的プラグインホストや任意コマンド実行は初期範囲に含めない。
+外部 API は Code Action の**候補列挙時には呼ばない**。transformations（ローカルな純粋変換）は
+クライアントが resolve を宣言しない場合、列挙時にその場で解決されることがあるため、
+副作用を伴うエンジンをこの経路には乗せない。翻訳のように外部送信・課金を伴う実行は、
+LSP の `command`（`workspace/executeCommand`）経由に限定する。command は仕様上、
+ユーザーが実際にアクションを選択したときにのみクライアントから呼ばれ、列挙・resolve の
+経路を通らない（開発順序 7 で確認・採用）。任意のユーザー指定コマンドを実行する汎用の
+動的プラグインホストや任意コマンド実行は導入しない。command は各拡張が固定で宣言する
+少数のコマンド（例: `text-tools.translate`）に限る。
 
 ## 開発順序
 
@@ -122,20 +137,68 @@ Zed での日本語執筆を支援する。文字変換・校正・翻訳のエ�
    校正拡張（`inspections` がある拡張）は診断を既定で有効にし、明示的な
    `initialization_options.diagnostics.enabled: false` でのみ無効化する
    （`src/lsp/create-server.js`）。
-7. DeepL を追加する（校正拡張とは別に接続するか、校正拡張に含めるかは未定）。
+7. DeepL を追加する（実装済み、2026-09-19）。校正拡張とは別の独立した拡張
+   （`extension-translation/`、ID: `text-tools-translation`）として接続した。決定事項:
+   - **実行経路**: 候補表示（`textDocument/codeAction`）だけでは通信・課金を発生させない
+     という制約から、翻訳アクションは `data`／`edit`（resolveProvider 経由）ではなく
+     LSP の `command`（`workspace/executeCommand`）で実行する。既存の transformations は
+     クライアントが resolve を宣言しない場合、列挙時にその場で解決される実装になっており
+     （`src/lsp/create-server.js` の `lazyEdits` 分岐）、これは純粋なローカル変換では無害だが
+     外部送信を伴う処理には使えないため。`connection.onExecuteCommand`
+     （`vscode-languageserver` が提供）でユーザーの明示的な実行のみを受け付ける。
+   - **対象言語**: 初版は「DeepLで日本語に翻訳」（`JA`）「DeepLで英語に翻訳」（`EN-US`）の
+     2 アクションのみ。翻訳元言語は DeepL の自動判定に任せる（`source_lang` を送らない）。
+     VS Code 版参考実装（soerenuhrbach/vscode-deepl）にある「翻訳先を都度指定」「クリップボード
+     翻訳」「複製して翻訳」等は見送り。
+   - **APIキー**: `process.env.DEEPL_AUTH_KEY` を呼び出しのたびに読む（設定ファイルに書かせない）。
+     キー未設定でもサーバーは起動し、翻訳実行時にのみ案内する。送信先 URL はキー形式
+     （Free は `:fx` 接尾辞）から自動判定し、固定（設定で変更不可）。
+     GUI 起動の Zed でも環境変数が届くかは実機確認の結果、Zed 公式ドキュメント通り
+     ログインシェル（zsh なら `.zprofile`。対話シェル専用の `.zshrc` は不可）経由で
+     解決できることを確認した（動作確認先での実機確認、2026-09-19）。
+     追加対応（同日）: 1Password 等のシークレット管理ツールと組み合わせたいという要望を受け、
+     `DEEPL_AUTH_KEY_OP_REF`（`op://vault/item/field` という非機密の参照文字列）にも対応した。
+     設定されている場合、`DEEPL_AUTH_KEY` が無ければ翻訳実行時に初めて `op read` を呼んで解決し
+     （エディタ起動時に無条件で認証を求めると使わないセッションでも毎回認証が走ってしまうため、
+     使用時まで遅延させる設計）、成功したらプロセスの寿命の間メモリにキャッシュする。
+     `DEEPL_AUTH_KEY` が優先され、その場合 `op` は一切呼ばれない
+     （`src/engines/deepl.js` の `resolveApiKey`）。
+   - **通信実装**: 追加 npm 依存を避けるため、公式 SDK（deepl-node）ではなく Node 標準の
+     `fetch`／`AbortSignal`（`AbortSignal.any`／`AbortSignal.timeout`、Node 22 標準）を直接使う。
+   - **安全対策**: 送信前のサイズガード（約 100000 バイト、DeepL の 128KiB リクエスト上限に
+     対する安全マージン）、文書バージョンの確認（実行前・完了後の両方）、同一文書への多重実行の
+     抑止、エラー種別（認証・利用上限・レート制限・タイムアウト・ネットワーク・キー未設定）ごとの
+     案内、原文・訳文・キーをログに出さないことを実装した（`src/engines/deepl.js`）。
+   実装: `src/engines/deepl.js`（通信・エラー分類）、`src/features/translation.js`
+   （対象言語ごとのアクション定義）、`src/lsp/translation-server.js`（エントリーポイント）、
+   `src/lsp/create-server.js`（`translations` 引数・`onExecuteCommand`・`executeCommandProvider`
+   の追加）、`extension-translation/`（他拡張と同型の Rust 拡張）。
+   テスト: `test/deepl.test.js`（`fetch` をモックした単体テスト）、
+   `test/translate-server.test.js`（`test/fixtures/dummy-translation.js`・
+   `test/fixtures/test-translation-server.js` を使った stdio E2E。候補列挙では実行されないこと、
+   `workspace/executeCommand` でのみ実行・`workspace/applyEdit` が送られること、バージョン不一致・
+   サイズ超過・多重実行の拒否、`initializationOptions.translation.enabled: false` での無効化を検証）。
+   **実機確認は未実施**（ユーザー確認待ち）: Zed GUI で候補表示だけでは通信が起きないことの目視確認、
+   GUI 起動した Zed のプロセスに `DEEPL_AUTH_KEY` が実際に届くか、実キーでの動作・Undo の確認。
 
 字数の常時表示は後段とし、このための Zed 本体変更は初期範囲に含めない。
 
 ## Git と公開
 
-当面はプロジェクト全体を一つのリポジトリで管理する。変換拡張・校正拡張・共通コードを
+当面はプロジェクト全体を一つのリポジトリで管理する。変換拡張・校正拡張・翻訳拡張・共通コードを
 同じリポジトリに置き、それぞれ独立してリリースできるようにする（2026-09-19、拡張の分割方針）。
 ソース、文書、テスト、npm と Cargo のロックファイルを記録し、依存パッケージ本体、
 ビルド成果物、環境用メタデータは除外する。
 複数のリポジトリへ分割する必要が生じた段階で、改めて検討する。
 
-公開先・正式名称・本プロジェクトのライセンスは未決定。
+本プロジェクトのライセンスは GPL-3.0-or-later に決定済み（著作権者: Sayawaka。詳細は
+[docs/license-audit.md](license-audit.md)、リポジトリ直下の `LICENSE`）。想定リポジトリ名
+「`zed-japanese-writing-tools`」の共有は受けているが、公開先の実 URL はまだ確定していない
+（確定後、README・LICENSE 等に反映する）。
 ローカル Git の初期化とコミットは GitHub 公開とは別に実施する。
 マシン固有のパスは `npm run setup:example` で検出し、Git 対象外の
 `examples/.zed/settings.json` に生成する。接続情報・設置先のメモは `*.local.md` に置く。
-`.env` と `.env.*` も Git 対象外（`.env.example` のみ共有可）。現時点で .env の読み込みは不要。
+`.env` と `.env.*` も Git 対象外（`.env.example` のみ共有可）。アプリケーション側で `.env`
+ファイルを自動読み込みする仕組み（dotenv 等）は導入していない。翻訳拡張の `DEEPL_AUTH_KEY` は
+利用者が自身のシェル・Zed の起動環境で設定する想定（README「翻訳拡張（DeepL 接続）」節参照）。
+`.env.example` は変数名を示すだけの見本で、実際の値は書かない。

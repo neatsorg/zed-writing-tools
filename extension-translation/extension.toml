@@ -1,0 +1,10 @@
+id = "text-tools-translation"
+name = "Text Tools Translation"
+version = "0.1.0"
+schema_version = 1
+authors = ["Sayawaka"]
+description = "DeepL translation of the selected text via a shared language server"
+
+[language_servers.text-tools-translation]
+name = "Text Tools Translation"
+languages = ["Plain Text"]
