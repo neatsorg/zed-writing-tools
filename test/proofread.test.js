@@ -5,7 +5,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createMessageConnection, StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node.js';
-import { proofread } from '../src/engines/proofread.js';
+import { proofread, ALL_RULE_NAMES } from '../src/engines/proofread.js';
 
 test('proofread reports regex-based rules at their UTF-16 offset, unaffected by a preceding emoji', async () => {
   const text = '\u{1F600}あ​い。'; // 😀あ<zero-width-space>い。
@@ -70,6 +70,16 @@ test('proofread skips heavy sentence-splitting rules above the size cap', async 
   assert.ok(!findings.some(f => f.message.includes('max-ten')));
 });
 
+test('proofread stops a disabled rule instead of only filtering its diagnostics', async () => {
+  const text = '食べれる。'; // ら抜き言葉
+  assert.ok(ALL_RULE_NAMES.includes('no-dropping-the-ra'));
+  const disabled = await proofread(text, undefined, { disabledRuleNames: new Set(['no-dropping-the-ra']) });
+  assert.deepEqual(disabled, []);
+  // 他のルールは影響を受けない。
+  const stillEnabled = await proofread(text, undefined, { disabledRuleNames: new Set(['max-ten']) });
+  assert.ok(stillEnabled.some(f => f.message.includes('no-dropping-the-ra')));
+});
+
 test('proofread ignores a .textlintrc in the current working directory', async t => {
   const dir = await mkdtemp(path.join(tmpdir(), 'zed-writing-tools-textlintrc-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
@@ -128,6 +138,42 @@ test('stdio LSP: proofreading extension enables diagnostics by default and offer
   assert.equal(diagnosis.diagnostics[0].severity, 3);
   assert.match(diagnosis.diagnostics[0].message, /no-dropping-the-ra/);
   assert.deepEqual(diagnosis.diagnostics[0].range, { start: { line: 1, character: 7 }, end: { line: 1, character: 8 } });
+  await rpc.sendNotification('textDocument/didClose', { textDocument: { uri } });
+  await rpc.sendRequest('shutdown');
+  await rpc.sendNotification('exit');
+});
+
+test('stdio LSP: a specific proofreading rule can be disabled via initializationOptions.diagnostics.rules', { timeout: 10000 }, async t => {
+  const child = spawn(process.execPath, ['src/lsp/proofreading-server.js', '--stdio']);
+  let errors = '';
+  child.stderr.on('data', chunk => { errors += chunk; });
+  const rpc = createMessageConnection(new StreamMessageReader(child.stdout), new StreamMessageWriter(child.stdin));
+  const publications = [];
+  rpc.onNotification('textDocument/publishDiagnostics', params => publications.push(params));
+  async function nextDiagnostics(version) {
+    for (let i = 0; i < 300; i++) {
+      const result = publications.find(item => item.version === version);
+      if (result) return result;
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    assert.fail('diagnostics not received');
+  }
+  rpc.listen();
+  t.after(() => { rpc.dispose(); child.kill(); assert.equal(errors, ''); });
+  await rpc.sendRequest('initialize', {
+    processId: process.pid, rootUri: null,
+    initializationOptions: { diagnostics: { rules: { 'no-dropping-the-ra': false } } },
+    capabilities: {},
+  });
+  await rpc.sendNotification('initialized', {});
+  const uri = 'file:///tmp/writing-tools-proofreading-rule-disabled-test.txt';
+  await rpc.sendNotification('textDocument/didOpen', {
+    textDocument: { uri, languageId: 'plaintext', version: 1, text: '食べれる。' }, // ら抜き言葉のみ
+  });
+  await rpc.sendNotification('textDocument/didChange', {
+    textDocument: { uri, version: 2 }, contentChanges: [{ text: '食べれる。' }],
+  });
+  assert.deepEqual((await nextDiagnostics(2)).diagnostics, []);
   await rpc.sendNotification('textDocument/didClose', { textDocument: { uri } });
   await rpc.sendRequest('shutdown');
   await rpc.sendNotification('exit');

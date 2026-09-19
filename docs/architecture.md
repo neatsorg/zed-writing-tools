@@ -58,7 +58,8 @@ import しないため、無関係な依存を読み込まない。3 拡張を�
 `diagnostics.js` が LSP の Diagnostics に変換する（`test/fixtures/dummy-inspection.js` の
 ダミーエンジンと同じ契約）。翻訳エンジンも文字列入力・文字列出力（`translate(text, targetLang, signal)`）
 だが、外部送信・課金を伴うため実行経路を transformations とは分けている（次段落）。
-各機能の有効・無効は独立して設定できるようにする。
+各機能の有効・無効は独立して設定できるようにする（実施済み、2026-09-20。詳細は下記「機能ごとの
+細かい設定」）。
 
 文書の版を確認し、古い結果を適用しない。変換失敗時は原文を保持する。
 外部 API は Code Action の**候補列挙時には呼ばない**。transformations（ローカルな純粋変換）は
@@ -181,7 +182,28 @@ LSP の `command`（`workspace/executeCommand`）経由に限定する。command
    **実機確認は未実施**（ユーザー確認待ち）: Zed GUI で候補表示だけでは通信が起きないことの目視確認、
    GUI 起動した Zed のプロセスに `DEEPL_AUTH_KEY` が実際に届くか、実キーでの動作・Undo の確認。
 
+8. 変換・校正・DeepL の 3 拡張に、項目・ルール単位の有効・無効スイッチを整備する
+   （実施済み、2026-09-20。2026-09-20 のユーザー合意「今後の作業順序」の 2 番目）。
+   詳細は次節「機能ごとの細かい設定」。
+
 字数の常時表示は後段とし、このための Zed 本体変更は初期範囲に含めない。
+
+## 機能ごとの細かい設定
+
+`initialization_options.diagnostics.enabled`／`translation.enabled`（拡張全体の有効・無効）に加え、
+2026-09-20 に変換項目・校正ルール・翻訳言語を個別に有効・無効化できるようにした。
+無効化は表示を隠すだけでなく実行そのものを止める（`src/lsp/create-server.js` の
+`activeTransformations`／`activeTranslations` が Code Action の列挙・resolve・
+`workspace/executeCommand` のすべてで参照される唯一の一覧であり、校正は
+`disabledRuleNames` を textlint のカーネル構築（`selectRuleNames`）へ渡してルール自体を除外する）。
+設定キーの具体例は [README「機能ごとの設定」](../README.md)を参照。
+
+設定 GUI の追加は今回のスコープに含めない。2026-09 時点の Zed 公開拡張 API を調査した結果、
+拡張が独自の設定フォームや JSON Schema を提示する仕組みは無いと確認した
+（[zed-industries/zed#60648](https://github.com/zed-industries/zed/discussions/60648) の
+Configure UI 提案は、対応する [PR #60653](https://github.com/zed-industries/zed/pull/60653) が
+2026-07-09 にクローズされ未実装のまま）。したがって `settings.json` への直接記述のみを
+設定方法とし、設定変更後は言語サーバーの再起動が必要という既存の運用を維持する。
 
 ## Git と公開
 

@@ -92,6 +92,37 @@ test('stdio LSP: unsaved incremental edits, UTF-16 positions and stale action re
   await rpc.sendNotification('exit');
 });
 
+test('stdio LSP: a specific conversion item can be disabled via initializationOptions.conversion.items', { timeout: 10000 }, async t => {
+  const child = spawn(process.execPath, ['src/lsp/server.js', '--stdio']);
+  let errors = '';
+  child.stderr.on('data', chunk => { errors += chunk; });
+  const rpc = createMessageConnection(new StreamMessageReader(child.stdout), new StreamMessageWriter(child.stdin));
+  rpc.listen();
+  t.after(() => { rpc.dispose(); child.kill(); assert.equal(errors, ''); });
+  await rpc.sendRequest('initialize', {
+    processId: process.pid, rootUri: null,
+    initializationOptions: { conversion: { items: { 'width.full.alphanumeric': false } } },
+    capabilities: {
+      general: { positionEncodings: ['utf-8', 'utf-16'] },
+      workspace: { workspaceEdit: { documentChanges: true } },
+      textDocument: { codeAction: { resolveSupport: { properties: ['edit'] } } },
+    },
+  });
+  await rpc.sendNotification('initialized', {});
+  const uri = 'file:///tmp/writing-tools-conversion-item-disabled-test.txt';
+  await rpc.sendNotification('textDocument/didOpen', {
+    textDocument: { uri, languageId: 'plaintext', version: 1, text: 'ABC09' },
+  });
+  const range = { start: { line: 0, character: 0 }, end: { line: 0, character: 5 } };
+  const actions = await rpc.sendRequest('textDocument/codeAction', {
+    textDocument: { uri }, range, context: { diagnostics: [] },
+  });
+  assert.equal(actions.length, 11); // 全 12 項目から無効化した 1 件を除く
+  assert.equal(actions.some(a => a.data?.id === 'width.full.alphanumeric'), false);
+  await rpc.sendRequest('shutdown');
+  await rpc.sendNotification('exit');
+});
+
 test('stdio LSP: diagnostics and conversion coexist via a test-only inspection engine', { timeout: 10000 }, async t => {
   // create-server.js に渡す inspections はテスト用のダミー（test/fixtures/）。
   // 本格校正エンジン接続前でも、diagnostics.js の接続を変換と一緒に検証する。

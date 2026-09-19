@@ -42,33 +42,52 @@ export function createServer({ transformations, inspections, translations = [] }
   const documents = new TextDocuments(TextDocument);
   let enabled = true;
   let translationEnabled = true;
+  // items（provider の id ごとの有効・無効マップ）で絞り込んだ後の一覧。列挙・resolve・
+  // executeCommand のすべてがここを参照するため、無効化した項目は表示からも実行からも消える。
+  let activeTransformations = transformations;
+  let activeTranslations = translations;
   let versionedEdits = false;
   let lazyEdits = false;
   let diagnostics;
   const inFlightTranslationsByUri = new Set();
 
+  // items で明示的に false にされた id だけを除く。未指定の id は既定で有効のまま残す。
+  function filterByItems(providers, items) {
+    return providers.filter(provider => items?.[provider.id] !== false);
+  }
+
   connection.onInitialize(params => {
-    enabled = params.initializationOptions?.conversion !== false;
+    const conversionOptions = params.initializationOptions?.conversion;
+    enabled = conversionOptions?.enabled !== false;
+    activeTransformations = filterByItems(transformations, conversionOptions?.items);
+
+    const diagnosticsOptions = params.initializationOptions?.diagnostics;
+    // rules で明示的に false にされたルール名の集合。校正エンジン（textlint）へそのまま渡し、
+    // 診断結果を後から間引くのではなくカーネルに渡すルール自体から外す（実行を止める）。
+    const disabledRuleNames = new Set(
+      Object.entries(diagnosticsOptions?.rules ?? {}).filter(([, value]) => value === false).map(([name]) => name));
     // inspections がある拡張（校正拡張）では既定で診断を有効にし、明示的な false でのみ無効化する。
     // inspections が空（変換拡張、または本格校正エンジン接続前）では、設定に関わらず診断を開始しない。
-    if (params.initializationOptions?.diagnostics?.enabled !== false && inspections.length > 0) {
+    if (diagnosticsOptions?.enabled !== false && inspections.length > 0) {
       diagnostics = createDiagnostics({
         documents,
         publish: params => connection.sendDiagnostics(params),
-        inspect: (text, signal) => inspections[0].inspect(text, signal),
+        inspect: (text, signal) => inspections[0].inspect(text, signal, { disabledRuleNames }),
         onError: message => connection.console.error(message),
       });
     }
     // translations がある拡張（翻訳拡張）では既定で有効にし、明示的な false でのみ無効化する
     // （diagnostics.enabled と同じパターン）。
-    translationEnabled = params.initializationOptions?.translation?.enabled !== false;
+    const translationOptions = params.initializationOptions?.translation;
+    translationEnabled = translationOptions?.enabled !== false;
+    activeTranslations = filterByItems(translations, translationOptions?.items);
     versionedEdits = params.capabilities.workspace?.workspaceEdit?.documentChanges === true;
     lazyEdits = params.capabilities.textDocument?.codeAction?.resolveSupport?.properties?.includes('edit') === true;
     return { capabilities: {
       positionEncoding: 'utf-16',
       textDocumentSync: TextDocumentSyncKind.Incremental,
       codeActionProvider: { codeActionKinds: ['refactor.rewrite'], resolveProvider: true },
-      ...(translations.length > 0 && translationEnabled ? { executeCommandProvider: { commands: [TRANSLATE_COMMAND] } } : {}),
+      ...(activeTranslations.length > 0 && translationEnabled ? { executeCommandProvider: { commands: [TRANSLATE_COMMAND] } } : {}),
     } };
   });
 
@@ -77,7 +96,7 @@ export function createServer({ transformations, inspections, translations = [] }
     const document = documents.get(params.textDocument.uri);
     if (!document || selectedText(document, params.range) === null) return [];
 
-    const transformActions = (!enabled || !versionedEdits) ? [] : transformations.map(provider => ({
+    const transformActions = (!enabled || !versionedEdits) ? [] : activeTransformations.map(provider => ({
       title: provider.title, kind: 'refactor.rewrite',
       data: { id: provider.id, uri: document.uri, version: document.version, range: params.range },
     }));
@@ -86,7 +105,7 @@ export function createServer({ transformations, inspections, translations = [] }
 
     // 翻訳アクションは data/edit を持たせない。command のみを持たせることで、上の
     // resolveProvider 経路（列挙時の eager resolve を含む）に一切乗らないようにする。
-    const translateActions = (!translationEnabled || !versionedEdits) ? [] : translations.map(provider => ({
+    const translateActions = (!translationEnabled || !versionedEdits) ? [] : activeTranslations.map(provider => ({
       title: provider.title, kind: 'refactor.rewrite',
       command: {
         title: provider.title, command: TRANSLATE_COMMAND,
@@ -100,7 +119,7 @@ export function createServer({ transformations, inspections, translations = [] }
   async function resolveAction(action, token) {
     const data = action.data;
     const document = data && documents.get(data.uri);
-    const provider = transformations.find(item => item.id === data?.id);
+    const provider = activeTransformations.find(item => item.id === data?.id);
     if (!document || document.version !== data.version || !provider || !data.range) {
       throw new ResponseError(LSPErrorCodes.ContentModified, '文書が変更されました。変換を選び直してください。');
     }
@@ -138,7 +157,7 @@ export function createServer({ transformations, inspections, translations = [] }
     if (!translationEnabled || !versionedEdits) return;
     const [arg] = params.arguments ?? [];
     const document = arg && documents.get(arg.uri);
-    const provider = translations.find(item => item.id === arg?.id);
+    const provider = activeTranslations.find(item => item.id === arg?.id);
     if (!document || document.version !== arg.version || !provider || !arg.range) {
       notifyError('文書が変更されました。翻訳をもう一度選び直してください。');
       return;

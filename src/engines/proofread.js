@@ -16,7 +16,7 @@ if (require('kuromoji/src/Tokenizer.js').textToolsUtf16Patch !== 1 ||
 
 const presetJapanese = moduleInterop(presetJapaneseModule);
 const textlintPluginText = moduleInterop(textlintPluginTextModule);
-const ALL_RULE_NAMES = Object.keys(presetJapanese.rules);
+export const ALL_RULE_NAMES = Object.keys(presetJapanese.rules);
 
 // 文単位で解析するため、文書サイズに対して超線形に遅くなるルール（検証結果は
 // docs/textlint-research.md）。この文字数を超える文書ではスキップする。
@@ -29,8 +29,9 @@ const HEAVY_RULES = new Set([
 ]);
 const MAX_CHARS_FOR_HEAVY_RULES = 30000;
 
-function selectRuleNames(text) {
-  return ALL_RULE_NAMES.filter(name => text.length <= MAX_CHARS_FOR_HEAVY_RULES || !HEAVY_RULES.has(name));
+function selectRuleNames(text, disabledRuleNames) {
+  return ALL_RULE_NAMES.filter(name =>
+    !disabledRuleNames.has(name) && (text.length <= MAX_CHARS_FOR_HEAVY_RULES || !HEAVY_RULES.has(name)));
 }
 
 function buildRules(ruleNames) {
@@ -72,8 +73,10 @@ function getKernelOptionsFor(ruleNames) {
 }
 
 // kuromoji の位置補正は依存パッチで行う。textlint の range は UTF-16 のまま返す。
-export async function proofread(text) {
-  const result = await kernel.lintText(text, getKernelOptionsFor(selectRuleNames(text)));
+// disabledRuleNames（preset-japanese のルール名の集合）で指定したルールは、診断からの除外では
+// なくカーネルへ渡すルール自体から外す。無効化は表示だけでなく実行そのものを止める。
+export async function proofread(text, signal, { disabledRuleNames = new Set() } = {}) {
+  const result = await kernel.lintText(text, getKernelOptionsFor(selectRuleNames(text, disabledRuleNames)));
   return result.messages.map(message => {
     const [start, end] = message.range;
     return { start, end, message: `${message.message}（${message.ruleId}）` };

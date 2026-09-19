@@ -145,6 +145,30 @@ test('stdio LSP translate: a second concurrent execution on the same document is
   await rpc.sendNotification('exit');
 });
 
+test('stdio LSP translate: initializationOptions.translation.items disables one provider without affecting others', { timeout: 10000 }, async t => {
+  const { rpc, applyEditRequests } = startClient(t);
+  // "working" を無効化する。ガードが無ければ実際に翻訳が成功し applyEdit が呼ばれてしまうので、
+  // その場合だけ以下のアサーションが落ちる（initializationOptions.translation.enabled: false の
+  // テストと同じ考え方）。
+  await initialize(rpc, { translation: { items: { 'test.translate.working': false } } });
+  await openDocument(rpc);
+  const actions = await rpc.sendRequest('textDocument/codeAction', {
+    textDocument: { uri: URI }, range: RANGE, context: { diagnostics: [] },
+  });
+  assert.equal(actions.some(a => a.command?.arguments?.[0]?.id === 'test.translate.working'), false);
+  assert.ok(actions.some(a => a.command?.arguments?.[0]?.id === 'test.translate.throwing'));
+
+  // 列挙からの非表示だけでなく、直接 executeCommand を呼んでも拒否されること（多層防御）。
+  await rpc.sendRequest('workspace/executeCommand', {
+    command: 'writing-tools.translate',
+    arguments: [{ id: 'test.translate.working', uri: URI, version: 1, range: RANGE }],
+  });
+  assert.equal(applyEditRequests.length, 0);
+
+  await rpc.sendRequest('shutdown');
+  await rpc.sendNotification('exit');
+});
+
 test('stdio LSP translate: initializationOptions.translation.enabled: false disables the feature entirely', { timeout: 10000 }, async t => {
   const { rpc, applyEditRequests } = startClient(t);
   const initResult = await initialize(rpc, { translation: { enabled: false } });

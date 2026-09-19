@@ -122,6 +122,78 @@ npm run deploy:server-dev -- translation   # 翻訳拡張の作業ディレク�
 同じ構成の配布物を取得・展開する処理を追加する予定です（未実装）。詳細は
 [設計方針](docs/architecture.md) を参照してください。
 
+### 機能ごとの設定（項目・ルール単位の有効・無効）
+
+3 拡張とも、`.zed/settings.json` の `lsp.<拡張 ID>.initialization_options` に設定を書きます。
+専用の設定 GUI は提供していません。Zed の公開拡張 API（2026-09 時点）には、拡張が独自の
+設定フォームや JSON Schema を提示する仕組みが無く
+（[zed-industries/zed#60648](https://github.com/zed-industries/zed/discussions/60648) で
+Configure UI が提案されたが、対応する [PR #60653](https://github.com/zed-industries/zed/pull/60653)
+はスクリーンショット等が無いまま 2026-07-09 にクローズ済み）、`settings.json` の直接編集が
+現状の唯一の手段です。設定変更後は言語サーバーの再起動
+（コマンドパレット: `zed: restart language server`）が必要です。
+
+無効化は表示を隠すだけでなく実行そのものを止めます（変換は該当項目を Code Action の候補から
+外して実行せず、校正はルールを textlint のカーネルへ渡す前に除外し、DeepL は
+`workspace/executeCommand` の実行時にも無効化設定を確認して外部送信そのものを止めます）。
+
+**変換拡張**（`lsp.writing-tools-conversion.initialization_options`）:
+
+```json
+{
+  "conversion": {
+    "enabled": true,
+    "items": {
+      "width.full.alphanumeric": true,
+      "width.half.symbol": false
+    }
+  }
+}
+```
+
+`enabled: false` で拡張全体を無効化します。`items` は個別の変換項目（Code Action の内部 ID）を
+`false` にしたものだけを無効化し、指定しなかった項目・`true` にした項目は有効のままです。
+ID は `src/features/conversion.js` の一覧（`width.full.alphanumeric`・`width.half.alphanumeric`・
+`width.full.alpha`・`width.half.alpha`・`width.full.digit`・`width.half.digit`・
+`width.full.symbol`・`width.half.symbol`・`width.full.kana`・`width.half.kana`・
+`kana.hiragana`・`kana.katakana`）を参照してください。
+
+**校正拡張**（`lsp.writing-tools-proofreading.initialization_options`）:
+
+```json
+{
+  "diagnostics": {
+    "enabled": true,
+    "rules": {
+      "no-dropping-the-ra": false
+    }
+  }
+}
+```
+
+`rules` は [preset-japanese](https://github.com/textlint-ja/textlint-rule-preset-japanese) の
+ルール名（例: 「ら抜き表現を指摘するか」に対応する `no-dropping-the-ra`）をキーにし、`false` に
+したルールだけをスキップします。診断メッセージ末尾の `（preset-japanese/<ルール名>）` がそのまま
+キーに使えます。文書サイズが 30000 字を超えた場合の重いルールの自動スキップ（下記）とは独立に働き、
+両方の条件に該当するルールは当然実行されません。
+
+**翻訳拡張**（`lsp.writing-tools-translation.initialization_options`）:
+
+```json
+{
+  "translation": {
+    "enabled": true,
+    "items": {
+      "deepl.en": false
+    }
+  }
+}
+```
+
+`items` は翻訳先言語ごとの Code Action（`deepl.ja`・`deepl.en`）を個別に無効化します。
+`enabled: false`（既存）は翻訳機能全体を無効化し、`workspace/executeCommand` の
+`executeCommandProvider` 自体を宣言しません。
+
 ### 校正拡張（textlint 接続）
 
 `extension-proofreading/`（ID: `writing-tools-proofreading`）が `src/engines/proofread.js` を

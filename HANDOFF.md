@@ -40,6 +40,33 @@ npmパッケージ名・Cargoクレート名も追随）。Zed拡張ID（`writin
 設定変更時の即時集計の指摘は解消済み。適用結果9ファイルの一致とPythonテスト2件の成功を確認した。
 そのレビューではRustの再ビルド・GUI確認は行っていないため、実機確認完了とは扱わない。
 
+## 開発順序2: 変換・校正・DeepLの細かな機能スイッチ（2026-09-20）
+
+「今後の作業順序と公開方針」の2番目（変換項目や校正ルールを設定で切り替えられるようにする）に着手し、完了した。
+
+- 設定画面（GUI）の公開API対応範囲を先に調査した。2026-09時点のZed公開拡張APIには、拡張が
+  独自の設定フォームやJSON Schemaを提示する仕組みが無いと確認した
+  （[zed-industries/zed#60648](https://github.com/zed-industries/zed/discussions/60648)の
+  Configure UI提案は、対応する[PR #60653](https://github.com/zed-industries/zed/pull/60653)が
+  スクリーンショット等が無いまま2026-07-09にクローズされ未実装）。よって`settings.json`への
+  直接記述のみを設定方法とし、設定変更後は言語サーバーの再起動が必要という既存の運用を維持する。
+- 変換拡張: `initialization_options.conversion.items.<id>`（既定true、falseで無効化）を追加。
+  無効化した項目はCode Actionの候補からも実行からも消える（`src/lsp/create-server.js`の
+  `activeTransformations`がonCodeAction・resolve双方で参照する唯一の一覧）。
+- 校正拡張: `initialization_options.diagnostics.rules.<textlintルール名>`（既定true）を追加。
+  無効化は診断結果を後から間引くのではなく、textlintのカーネルへ渡すルール自体から除外する
+  （`src/engines/proofread.js`の`selectRuleNames`にdisabledRuleNamesを追加）。文書サイズ超過時の
+  重いルールのスキップとは独立に働く。
+- 翻訳拡張: `initialization_options.translation.items.<id>`（既定true）を追加。無効化は候補の
+  非表示だけでなく`workspace/executeCommand`の実行時にも確認する（既存の`translation.enabled`と
+  同じ多層防御）。
+- 3拡張とも、既存の`<機能>.enabled`（拡張全体の有効・無効）はそのまま残し、`items`／`rules`は
+  その内側で個別項目を絞り込む形にした。
+
+自動テストを追加し、`npm test`は55件すべて成功（既存51件+新規4件）。
+GUI実機確認は未実施（ユーザー確認待ち）。README「機能ごとの設定」節と
+`docs/architecture.md`「機能ごとの細かい設定」節に詳細を記録した。
+
 ## Zed拡張IDの改称（2026-09-20）
 
 プロジェクト名を`zed-writing-tools`に改称した際（2026-09-19）、Zed拡張ID
@@ -548,6 +575,9 @@ https://iwe.md/docs/configuration/
 
 ## 次の担当者への依頼
 
-冒頭の「今後の作業順序と公開方針（2026-09-20、ユーザー合意）」に沿い、まず字数カウントの実機確認から進める。
+冒頭の「今後の作業順序と公開方針（2026-09-20、ユーザー合意）」に沿う。1番目（字数カウントの実機確認）・
+2番目（変換・校正・DeepLの細かな機能スイッチ）は完了。次は3番目（字数カウントの表示設定整備、
+`status_bar.document_stats_button`等の実機検証）に進む。2番目のGUI実機確認（設定を反映した状態での
+Code Action・診断・翻訳の動作確認）はユーザー確認待ちのまま残っている。
 変換・校正・翻訳のLSP拡張は本リポジトリ、文書統計の本体パッチは `../zed-word-counter`、
 多言語版への取り込みは `../zed-i18n` で扱う。初期のエンジン調査・LSP選定・拡張分割はやり直さない。
