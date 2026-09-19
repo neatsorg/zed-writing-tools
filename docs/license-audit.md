@@ -18,8 +18,8 @@ README 等へ実際の URL を反映することのみ。
 
 ## 対象と確認方法
 
-- 現在の生成済み配布物 `dist/text-tools-server/0.1.0` は npm 依存 6 件。
-- `dist/text-tools-proofreading-server/0.1.0` は npm 依存 110 配置、109 種（`name@version` の重複除外後）。
+- 現在の生成済み配布物 `dist/writing-tools-server/0.1.0` は npm 依存 6 件。
+- `dist/writing-tools-proofreading-server/0.1.0` は npm 依存 110 配置、109 種（`name@version` の重複除外後）。
   入れ子の `node_modules` も含む。両配布物を再生成して一覧を更新した。辞書は別途確認。
 - 両 Cargo プロジェクトを `cargo metadata --locked --offline` で確認。
   各 87 件の外部 crate。同じ依存集合。ホスト側のビルド依存・対象外プラットフォームも
@@ -125,8 +125,8 @@ GPL の派生物として組み込むことは区別が必要。提供者によ�
    すべて収録する」正しい形で処理する（`unicode-ident` の
    `(MIT OR Apache-2.0) AND Unicode-3.0` で確認済み）。
 5. 対応済み。`scripts/build-rust-notices.js` を新規実装。`cargo metadata --locked --offline`
-   で両 Cargo 拡張（`extension/`, `extension-proofreading/`、依存集合は完全に同一）の
-   全 87 crate を解決し、`extension/THIRD_PARTY_NOTICES`・
+   で両 Cargo 拡張（`extension-conversion/`, `extension-proofreading/`、依存集合は完全に同一）の
+   全 87 crate を解決し、`extension-conversion/THIRD_PARTY_NOTICES`・
    `extension-proofreading/THIRD_PARTY_NOTICES` を生成した（`npm run build:rust-notices`）。
    crate 内に LICENSE 系ファイルが無い 11 crate（wasm-tools 系・wit-bindgen 系・
    auditable-serde）は `scripts/known-licenses-rust/` に上流リポジトリの原文を個別保存して

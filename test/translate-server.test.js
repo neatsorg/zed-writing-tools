@@ -39,7 +39,7 @@ async function initialize(rpc, initializationOptions) {
   return result;
 }
 
-const URI = 'file:///tmp/text-tools-translate-test.txt';
+const URI = 'file:///tmp/writing-tools-translate-test.txt';
 const TEXT = 'Hello world';
 const RANGE = { start: { line: 0, character: 0 }, end: { line: 0, character: 11 } };
 
@@ -57,7 +57,7 @@ test('stdio LSP translate: listing code actions never invokes translate', { time
   const translateAction = actions.find(a => a.command?.arguments?.[0]?.id === 'test.translate.throwing');
   assert.ok(translateAction, 'expected a translate action for the throwing dummy provider');
   assert.equal(translateAction.edit, undefined);
-  assert.equal(translateAction.command.command, 'text-tools.translate');
+  assert.equal(translateAction.command.command, 'writing-tools.translate');
   await rpc.sendRequest('shutdown');
   await rpc.sendNotification('exit');
 });
@@ -67,7 +67,7 @@ test('stdio LSP translate: executeCommand runs translate and applies the edit', 
   await initialize(rpc);
   await openDocument(rpc);
   const result = await rpc.sendRequest('workspace/executeCommand', {
-    command: 'text-tools.translate',
+    command: 'writing-tools.translate',
     arguments: [{ id: 'test.translate.working', uri: URI, version: 1, range: RANGE }],
   });
   assert.equal(result, null);
@@ -89,7 +89,7 @@ test('stdio LSP translate: a stale version is rejected without calling translate
   await rpc.sendRequest('workspace/executeCommand', {
     // "throwing" プロバイダーを使うことで、バージョン不一致のガードを通り抜けて
     // translate が呼ばれてしまった場合はサーバーが例外を出す（t.after で検知）。
-    command: 'text-tools.translate',
+    command: 'writing-tools.translate',
     arguments: [{ id: 'test.translate.throwing', uri: URI, version: 1, range: RANGE }],
   });
   assert.equal(applyEditRequests.length, 0);
@@ -103,7 +103,7 @@ test('stdio LSP translate: a document change during translation discards the res
   await initialize(rpc);
   await openDocument(rpc);
   const executed = rpc.sendRequest('workspace/executeCommand', {
-    command: 'text-tools.translate',
+    command: 'writing-tools.translate',
     arguments: [{ id: 'test.translate.slow', uri: URI, version: 1, range: RANGE }],
   });
   await new Promise(resolve => setTimeout(resolve, 20));
@@ -124,7 +124,7 @@ test('stdio LSP translate: a selection larger than the provider limit is rejecte
   await rpc.sendRequest('workspace/executeCommand', {
     // "sized" プロバイダーは maxTextBytes: 4、実装は throwingTranslate。
     // ガードが効いていなければ translate が呼ばれてサーバーが例外を出す。
-    command: 'text-tools.translate',
+    command: 'writing-tools.translate',
     arguments: [{ id: 'test.translate.sized', uri: URI, version: 1, range: RANGE }],
   });
   assert.equal(applyEditRequests.length, 0);
@@ -137,7 +137,7 @@ test('stdio LSP translate: a second concurrent execution on the same document is
   const { rpc, applyEditRequests, showMessageRequests } = startClient(t);
   await initialize(rpc);
   await openDocument(rpc);
-  const args = { command: 'text-tools.translate', arguments: [{ id: 'test.translate.slow', uri: URI, version: 1, range: RANGE }] };
+  const args = { command: 'writing-tools.translate', arguments: [{ id: 'test.translate.slow', uri: URI, version: 1, range: RANGE }] };
   const [first, second] = await Promise.all([rpc.sendRequest('workspace/executeCommand', args), rpc.sendRequest('workspace/executeCommand', args)]);
   assert.equal(applyEditRequests.length, 1);
   assert.equal(showMessageRequests.length, 1);
@@ -153,7 +153,7 @@ test('stdio LSP translate: initializationOptions.translation.enabled: false disa
   const actions = await rpc.sendRequest('textDocument/codeAction', {
     textDocument: { uri: URI }, range: RANGE, context: { diagnostics: [] },
   });
-  assert.equal(actions.some(a => a.command?.command === 'text-tools.translate'), false);
+  assert.equal(actions.some(a => a.command?.command === 'writing-tools.translate'), false);
 
   // 無効化は候補の非表示だけに頼らない: クライアントが列挙をバイパスして直接
   // workspace/executeCommand を送っても、実行ハンドラー側で拒否されること（防御的な多層チェック）。
@@ -161,7 +161,7 @@ test('stdio LSP translate: initializationOptions.translation.enabled: false disa
   // 到達しないため、このテストがガードの有無を区別できない）。ガードが無ければ本当に
   // 翻訳が成功し applyEdit が呼ばれてしまうので、その場合だけこのアサーションが落ちる。
   await rpc.sendRequest('workspace/executeCommand', {
-    command: 'text-tools.translate',
+    command: 'writing-tools.translate',
     arguments: [{ id: 'test.translate.working', uri: URI, version: 1, range: RANGE }],
   });
   assert.equal(applyEditRequests.length, 0);
@@ -175,7 +175,7 @@ test('stdio LSP translate: a client-reported applyEdit failure is surfaced, not 
   await initialize(rpc);
   await openDocument(rpc);
   await rpc.sendRequest('workspace/executeCommand', {
-    command: 'text-tools.translate',
+    command: 'writing-tools.translate',
     arguments: [{ id: 'test.translate.working', uri: URI, version: 1, range: RANGE }],
   });
   assert.equal(applyEditRequests.length, 1); // 翻訳は実行され、適用が試みられた。

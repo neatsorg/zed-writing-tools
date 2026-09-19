@@ -6,14 +6,14 @@ const directory = new URL('../examples/.zed/', import.meta.url);
 const target = new URL('settings.json', directory);
 const settings = {
   lsp: {
-    'text-tools': {
+    'writing-tools': {
       binary: {
         path: process.execPath,
         arguments: [fileURLToPath(new URL('../src/lsp/server.js', import.meta.url)), '--stdio'],
       },
     },
   },
-  languages: { 'Plain Text': { language_servers: ['text-tools', '...'] } },
+  languages: { 'Plain Text': { language_servers: ['writing-tools', '...'] } },
 };
 
 await mkdir(directory, { recursive: true });

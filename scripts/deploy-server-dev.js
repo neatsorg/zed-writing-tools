@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { TARGETS } from './targets.js';
 
 // dist/<distDirName>/<version>/ を開発用 Zed 拡張の作業ディレクトリへ配置する。
-// 拡張本体（extension/src/lib.rs・extension-proofreading/src/lib.rs）は env::current_dir() で
+// 拡張本体（extension-conversion/src/lib.rs・extension-proofreading/src/lib.rs）は env::current_dir() で
 // この作業ディレクトリを見るため、公開後に GitHub Releases から取得・展開する場所も同じ構成にする。
 
 function zedExtensionsWorkDir() {

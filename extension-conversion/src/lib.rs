@@ -1,16 +1,16 @@
 use std::{env, fs};
 use zed_extension_api::{self as zed, settings::LspSettings, Result};
 
-struct TextTools;
+struct WritingTools;
 
 // サーバー配布物は `npm run build:server-dist` で生成し、`npm run deploy:server-dev` で
 // 拡張の作業ディレクトリ（この Wasm から見た current_dir）に配置する。公開後は同じ場所へ
 // GitHub Releases から取得・展開する予定で、このファイル名・構成はその移行を前提にしている。
-const SERVER_DIST_DIR: &str = "text-tools-server";
+const SERVER_DIST_DIR: &str = "writing-tools-server";
 const CURRENT_VERSION_FILE: &str = "CURRENT_VERSION";
 
-// `lsp.text-tools.binary` に明示設定が無いときのデフォルトの起動引数。
-// 拡張の作業ディレクトリ配下の `text-tools-server/<version>/src/lsp/server.js` を絶対パスで指す。
+// `lsp.writing-tools.binary` に明示設定が無いときのデフォルトの起動引数。
+// 拡張の作業ディレクトリ配下の `writing-tools-server/<version>/src/lsp/server.js` を絶対パスで指す。
 fn default_server_args() -> Result<Vec<String>> {
     let work_dir = env::current_dir().map_err(|error| error.to_string())?;
     let version_file = work_dir.join(SERVER_DIST_DIR).join(CURRENT_VERSION_FILE);
@@ -37,7 +37,7 @@ fn default_server_args() -> Result<Vec<String>> {
     Ok(vec![server_path.to_string_lossy().into_owned(), "--stdio".to_string()])
 }
 
-impl zed::Extension for TextTools {
+impl zed::Extension for WritingTools {
     fn new() -> Self {
         Self
     }
@@ -67,4 +67,4 @@ impl zed::Extension for TextTools {
     }
 }
 
-zed::register_extension!(TextTools);
+zed::register_extension!(WritingTools);

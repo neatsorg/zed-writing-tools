@@ -1,16 +1,16 @@
 use std::{env, fs};
 use zed_extension_api::{self as zed, settings::LspSettings, Result};
 
-struct TextToolsTranslation;
+struct WritingToolsTranslation;
 
 // サーバー配布物は `npm run build:server-dist -- translation` で生成し、
 // `npm run deploy:server-dev -- translation` で拡張の作業ディレクトリ
 // （この Wasm から見た current_dir）に配置する。他拡張とはディレクトリ名を分ける。
-const SERVER_DIST_DIR: &str = "text-tools-translation-server";
+const SERVER_DIST_DIR: &str = "writing-tools-translation-server";
 const CURRENT_VERSION_FILE: &str = "CURRENT_VERSION";
 
-// `lsp.text-tools-translation.binary` に明示設定が無いときのデフォルトの起動引数。
-// 拡張の作業ディレクトリ配下の `text-tools-translation-server/<version>/src/lsp/translation-server.js`
+// `lsp.writing-tools-translation.binary` に明示設定が無いときのデフォルトの起動引数。
+// 拡張の作業ディレクトリ配下の `writing-tools-translation-server/<version>/src/lsp/translation-server.js`
 // を絶対パスで指す。
 //
 // DEEPL_AUTH_KEY は Zed が子プロセスに継承する自身の環境変数から届く想定（env は明示的に
@@ -41,7 +41,7 @@ fn default_server_args() -> Result<Vec<String>> {
     Ok(vec![server_path.to_string_lossy().into_owned(), "--stdio".to_string()])
 }
 
-impl zed::Extension for TextToolsTranslation {
+impl zed::Extension for WritingToolsTranslation {
     fn new() -> Self {
         Self
     }
@@ -71,4 +71,4 @@ impl zed::Extension for TextToolsTranslation {
     }
 }
 
-zed::register_extension!(TextToolsTranslation);
+zed::register_extension!(WritingToolsTranslation);

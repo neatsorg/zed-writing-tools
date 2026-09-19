@@ -71,7 +71,7 @@ test('proofread skips heavy sentence-splitting rules above the size cap', async 
 });
 
 test('proofread ignores a .textlintrc in the current working directory', async t => {
-  const dir = await mkdtemp(path.join(tmpdir(), 'zed-text-tools-textlintrc-'));
+  const dir = await mkdtemp(path.join(tmpdir(), 'zed-writing-tools-textlintrc-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
   await writeFile(path.join(dir, '.textlintrc.json'), JSON.stringify({ rules: {}, filters: { comments: true } }));
   const originalCwd = process.cwd();
@@ -111,7 +111,7 @@ test('stdio LSP: proofreading extension enables diagnostics by default and offer
     },
   });
   await rpc.sendNotification('initialized', {});
-  const uri = 'file:///tmp/text-tools-proofreading-test.txt';
+  const uri = 'file:///tmp/writing-tools-proofreading-test.txt';
   await rpc.sendNotification('textDocument/didOpen', {
     textDocument: { uri, languageId: 'plaintext', version: 1, text: '前置き食べる。' }, // 前置き食べる。
   });
@@ -148,7 +148,7 @@ test('stdio LSP: proofreading extension diagnostics can be explicitly disabled',
     capabilities: {},
   });
   await rpc.sendNotification('initialized', {});
-  const uri = 'file:///tmp/text-tools-proofreading-disabled-test.txt';
+  const uri = 'file:///tmp/writing-tools-proofreading-disabled-test.txt';
   await rpc.sendNotification('textDocument/didOpen', {
     textDocument: { uri, languageId: 'plaintext', version: 1, text: '食べれる。' }, // 食べれる。
   });

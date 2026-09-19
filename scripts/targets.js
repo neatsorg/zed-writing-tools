@@ -3,14 +3,14 @@
 // package.json の dependencies・配布物ディレクトリ名・拡張 ID・起動エントリーポイントを分ける。
 export const TARGETS = {
   conversion: {
-    extensionId: 'text-tools',
-    distDirName: 'text-tools-server',
+    extensionId: 'writing-tools',
+    distDirName: 'writing-tools-server',
     serverEntry: 'src/lsp/server.js',
     dependencies: ['vscode-languageserver', 'vscode-languageserver-textdocument', 'jaconv'],
   },
   proofreading: {
-    extensionId: 'text-tools-proofreading',
-    distDirName: 'text-tools-proofreading-server',
+    extensionId: 'writing-tools-proofreading',
+    distDirName: 'writing-tools-proofreading-server',
     serverEntry: 'src/lsp/proofreading-server.js',
     dependencies: [
       'vscode-languageserver', 'vscode-languageserver-textdocument',
@@ -19,8 +19,8 @@ export const TARGETS = {
     ],
   },
   translation: {
-    extensionId: 'text-tools-translation',
-    distDirName: 'text-tools-translation-server',
+    extensionId: 'writing-tools-translation',
+    distDirName: 'writing-tools-translation-server',
     serverEntry: 'src/lsp/translation-server.js',
     dependencies: ['vscode-languageserver', 'vscode-languageserver-textdocument'],
   },

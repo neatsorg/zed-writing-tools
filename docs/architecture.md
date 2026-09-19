@@ -14,10 +14,10 @@ Zed での日本語執筆を支援する。文字変換・校正・翻訳のエ�
 
 ## 構成
 
-- 変換拡張（ID: `text-tools`。`extension/`）: 変換エンジンのみを有効にしてサーバーを起動する。
-- 校正拡張（ID: `text-tools-proofreading`。`extension-proofreading/`）:
+- 変換拡張（ID: `writing-tools`。`extension-conversion/`）: 変換エンジンのみを有効にしてサーバーを起動する。
+- 校正拡張（ID: `writing-tools-proofreading`。`extension-proofreading/`）:
   校正エンジンのみを有効にしてサーバーを起動する。
-- 翻訳拡張（ID: `text-tools-translation`。`extension-translation/`）:
+- 翻訳拡張（ID: `writing-tools-translation`。`extension-translation/`）:
   翻訳エンジン（DeepL）のみを有効にしてサーバーを起動する。
 - 共通コード（`src/`）: エンジン・LSP アダプター・機能登録。当面は同じリポジトリで 3 つの
   拡張と同居する。
@@ -33,9 +33,9 @@ Zed での日本語執筆を支援する。文字変換・校正・翻訳のエ�
 import しないため、無関係な依存を読み込まない。3 拡張を同時に導入しても、
 機能が重複したり複数のサーバーが同じ範囲を検査したりしない。
 
-サーバー配布物も分ける。拡張ごとに配布物ディレクトリ名（`text-tools-server`／
-`text-tools-proofreading-server`／`text-tools-translation-server`）を分け、
-校正拡張の配布物にのみ textlint 系の依存を含める（`extension/src/lib.rs`・
+サーバー配布物も分ける。拡張ごとに配布物ディレクトリ名（`writing-tools-server`／
+`writing-tools-proofreading-server`／`writing-tools-translation-server`）を分け、
+校正拡張の配布物にのみ textlint 系の依存を含める（`extension-conversion/src/lib.rs`・
 `extension-proofreading/src/lib.rs`・`extension-translation/src/lib.rs` 参照）。
 配布物の生成・配置スクリプトは `scripts/targets.js` の `TARGETS` に対象ごとの定義を
 集約しており、新しい対象を追加してもスクリプト本体は変更不要（開発順序 6・7 で確認済み）。
@@ -44,7 +44,7 @@ import しないため、無関係な依存を読み込まない。3 拡張を�
 
 | 部分 | 責務 | 現在の配置 |
 | --- | --- | --- |
-| Zed 拡張（変換・校正・翻訳） | サーバーの起動と設定。将来は取得・更新も担当 | `extension/`（変換）、`extension-proofreading/`（校正）、`extension-translation/`（翻訳） |
+| Zed 拡張（変換・校正・翻訳） | サーバーの起動と設定。将来は取得・更新も担当 | `extension-conversion/`（変換）、`extension-proofreading/`（校正）、`extension-translation/`（翻訳） |
 | サーバー本体 | LSP ハンドラーの組み立て。`{ transformations, inspections, translations }` を受け取る | `src/lsp/create-server.js` |
 | 拡張ごとのエントリーポイント | 対象拡張向けの機能サブセットで `create-server.js` を起動する | `src/lsp/server.js`（変換用）、`src/lsp/proofreading-server.js`（校正用）、`src/lsp/translation-server.js`（翻訳用） |
 | LSP アダプター | 文書同期、位置変換、版管理、Code Action、Diagnostics、コマンド実行 | `src/lsp/` |
@@ -68,7 +68,7 @@ LSP の `command`（`workspace/executeCommand`）経由に限定する。command
 ユーザーが実際にアクションを選択したときにのみクライアントから呼ばれ、列挙・resolve の
 経路を通らない（開発順序 7 で確認・採用）。任意のユーザー指定コマンドを実行する汎用の
 動的プラグインホストや任意コマンド実行は導入しない。command は各拡張が固定で宣言する
-少数のコマンド（例: `text-tools.translate`）に限る。
+少数のコマンド（例: `writing-tools.translate`）に限る。
 
 ## 開発順序
 
@@ -84,7 +84,7 @@ LSP の `command`（`workspace/executeCommand`）経由に限定する。command
    配布物の生成・配置は現在ローカルの npm スクリプトで行う。公開先が決まったら、
    同じ生成手順を CI に、配置を拡張からの GitHub Releases 取得・展開に置き換える。
 5. Zed 拡張を変換用・校正用に分割する（実施済み、2026-09-19）。`create-server.js` へ
-   機能サブセットを注入する形を使い、`extension-proofreading/`（ID: `text-tools-proofreading`）
+   機能サブセットを注入する形を使い、`extension-proofreading/`（ID: `writing-tools-proofreading`）
    を新設した。`src/features.js` は `src/features/conversion.js`・`src/features/proofreading.js`
    に分割し、`src/lsp/server.js`（変換用）はそれぞれ対応するモジュールから必要な機能だけを
    渡す。変換拡張は校正エンジンを import しないため、textlint 系の依存を読み込まない。
@@ -138,7 +138,7 @@ LSP の `command`（`workspace/executeCommand`）経由に限定する。command
    `initialization_options.diagnostics.enabled: false` でのみ無効化する
    （`src/lsp/create-server.js`）。
 7. DeepL を追加する（実装済み、2026-09-19）。校正拡張とは別の独立した拡張
-   （`extension-translation/`、ID: `text-tools-translation`）として接続した。決定事項:
+   （`extension-translation/`、ID: `writing-tools-translation`）として接続した。決定事項:
    - **実行経路**: 候補表示（`textDocument/codeAction`）だけでは通信・課金を発生させない
      という制約から、翻訳アクションは `data`／`edit`（resolveProvider 経由）ではなく
      LSP の `command`（`workspace/executeCommand`）で実行する。既存の transformations は

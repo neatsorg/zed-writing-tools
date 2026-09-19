@@ -1,6 +1,6 @@
 node_modules/
-extension/target/
-extension/extension.wasm
+extension-conversion/target/
+extension-conversion/extension.wasm
 extension-proofreading/target/
 extension-proofreading/extension.wasm
 extension-translation/target/

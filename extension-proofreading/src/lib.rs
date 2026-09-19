@@ -1,17 +1,17 @@
 use std::{env, fs};
 use zed_extension_api::{self as zed, settings::LspSettings, Result};
 
-struct TextToolsProofreading;
+struct WritingToolsProofreading;
 
 // サーバー配布物は `npm run build:server-dist -- proofreading` で生成し、
 // `npm run deploy:server-dev -- proofreading` で拡張の作業ディレクトリ
 // （この Wasm から見た current_dir）に配置する。変換拡張とはディレクトリ名を分け、
 // 校正拡張の配布物にのみ textlint 系の依存が含まれるようにする。
-const SERVER_DIST_DIR: &str = "text-tools-proofreading-server";
+const SERVER_DIST_DIR: &str = "writing-tools-proofreading-server";
 const CURRENT_VERSION_FILE: &str = "CURRENT_VERSION";
 
-// `lsp.text-tools-proofreading.binary` に明示設定が無いときのデフォルトの起動引数。
-// 拡張の作業ディレクトリ配下の `text-tools-proofreading-server/<version>/src/lsp/proofreading-server.js`
+// `lsp.writing-tools-proofreading.binary` に明示設定が無いときのデフォルトの起動引数。
+// 拡張の作業ディレクトリ配下の `writing-tools-proofreading-server/<version>/src/lsp/proofreading-server.js`
 // を絶対パスで指す。
 fn default_server_args() -> Result<Vec<String>> {
     let work_dir = env::current_dir().map_err(|error| error.to_string())?;
@@ -39,7 +39,7 @@ fn default_server_args() -> Result<Vec<String>> {
     Ok(vec![server_path.to_string_lossy().into_owned(), "--stdio".to_string()])
 }
 
-impl zed::Extension for TextToolsProofreading {
+impl zed::Extension for WritingToolsProofreading {
     fn new() -> Self {
         Self
     }
@@ -69,4 +69,4 @@ impl zed::Extension for TextToolsProofreading {
     }
 }
 
-zed::register_extension!(TextToolsProofreading);
+zed::register_extension!(WritingToolsProofreading);

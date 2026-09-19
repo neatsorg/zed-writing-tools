@@ -29,7 +29,7 @@ test('both tokenizer APIs preserve unknown astral words and UTF-16 token positio
 });
 
 test('dependency patches are idempotent and reject unexpected sources before writing', async t => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'text-tools-patch-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'writing-tools-patch-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const spec = JSON.parse(await readFile(new URL('../patches/kuromoji-0.1.2.json', import.meta.url), 'utf8'));
   const destination = path.join(root, 'node_modules/kuromoji');

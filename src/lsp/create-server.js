@@ -3,7 +3,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { makeEdit, selectedText } from './actions.js';
 import { createDiagnostics } from './diagnostics.js';
 
-const TRANSLATE_COMMAND = 'text-tools.translate';
+const TRANSLATE_COMMAND = 'writing-tools.translate';
 
 // 翻訳プロバイダーのエラーを利用者向けの日本語メッセージへ変換する。エンジン実装
 // （src/engines/deepl.js の DeeplTranslationError）に依存させず、error.kind の有無だけで

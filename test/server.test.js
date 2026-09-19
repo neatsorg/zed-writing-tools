@@ -62,7 +62,7 @@ test('stdio LSP: unsaved incremental edits, UTF-16 positions and stale action re
   });
   assert.equal(initialized.capabilities.positionEncoding, 'utf-16');
   await rpc.sendNotification('initialized', {});
-  const uri = 'file:///tmp/text-tools-test.txt';
+  const uri = 'file:///tmp/writing-tools-test.txt';
   const text = '日本😀é ABC09 終\r\n次の行';
   await rpc.sendNotification('textDocument/didOpen', { textDocument: { uri, languageId: 'plaintext', version: 1, text } });
   const range = { start: { line: 0, character: 7 }, end: { line: 0, character: 12 } };
@@ -121,7 +121,7 @@ test('stdio LSP: diagnostics and conversion coexist via a test-only inspection e
     },
   });
   await rpc.sendNotification('initialized', {});
-  const uri = 'file:///tmp/text-tools-diagnostics-test.txt';
+  const uri = 'file:///tmp/writing-tools-diagnostics-test.txt';
   await rpc.sendNotification('textDocument/didOpen', {
     textDocument: { uri, languageId: 'plaintext', version: 1, text: '日本😀é\r\n次の行' },
   });

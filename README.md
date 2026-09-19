@@ -23,9 +23,9 @@
   を受け取り、拡張ごとに異なる機能サブセットで起動できます。
 - `src/lsp/server.js`: 変換拡張のエントリーポイント。`src/lsp/proofreading-server.js`: 校正拡張の
   エントリーポイント。`src/lsp/translation-server.js`: 翻訳拡張のエントリーポイント。
-- `extension/`: 変換用の Zed 拡張（ID: `text-tools`）。
-  `extension-proofreading/`: 校正用の Zed 拡張（ID: `text-tools-proofreading`）。
-  `extension-translation/`: 翻訳用の Zed 拡張（ID: `text-tools-translation`）。
+- `extension-conversion/`: 変換用の Zed 拡張（ID: `writing-tools`）。
+  `extension-proofreading/`: 校正用の Zed 拡張（ID: `writing-tools-proofreading`）。
+  `extension-translation/`: 翻訳用の Zed 拡張（ID: `writing-tools-translation`）。
 
 各拡張は他の機能のエンジンを import しないため、それぞれ無関係な依存を読み込みません
 （変換拡張は textlint・DeepL 通信のコードを読み込まない、翻訳拡張は textlint を読み込まない、等）。
@@ -49,7 +49,7 @@ Node.js 22 以降、Rust と `wasm32-wasip2` ターゲットを使用します�
 npm ci --ignore-scripts
 npm run patch:deps
 npm test
-cargo build --manifest-path extension/Cargo.toml --target wasm32-wasip2 --release --locked
+cargo build --manifest-path extension-conversion/Cargo.toml --target wasm32-wasip2 --release --locked
 ```
 
 ## Zed での動作確認
@@ -86,13 +86,13 @@ Undo など各操作の個別の確認結果は未記録です。
 
 ### サーバー配布物と固定パスの解消
 
-Zed 拡張は `lsp.text-tools.binary.path`／`arguments` の明示設定を優先しますが、
+Zed 拡張は `lsp.writing-tools.binary.path`／`arguments` の明示設定を優先しますが、
 未設定の場合は次のように自動解決します。
 
 - Node 実行パス: Zed が使う Node（`node_binary_path()`）。
 - サーバー本体: 拡張の作業ディレクトリ（`~/.local/share/zed/extensions/work/<拡張 ID>/` など）
-  配下の配布物（変換拡張は `text-tools-server/<version>/src/lsp/server.js`、
-  校正拡張は `text-tools-proofreading-server/<version>/src/lsp/proofreading-server.js`）。
+  配下の配布物（変換拡張は `writing-tools-server/<version>/src/lsp/server.js`、
+  校正拡張は `writing-tools-proofreading-server/<version>/src/lsp/proofreading-server.js`）。
 
 これにより、プロジェクトをどこに置いたか・`node` がどこにあるかに依存せず起動できます。
 変換拡張・校正拡張は依存が異なる（校正拡張のみ textlint 系を持つ）ため、配布物も対象別に
@@ -100,18 +100,18 @@ Zed 拡張は `lsp.text-tools.binary.path`／`arguments` の明示設定を優�
 `proofreading`）を引数に取ります。
 
 ```sh
-npm run build:server-dist -- conversion    # dist/text-tools-server/<version>/ を生成
+npm run build:server-dist -- conversion    # dist/writing-tools-server/<version>/ を生成
 npm run deploy:server-dev -- conversion    # 変換拡張の作業ディレクトリへ配置
 
-npm run build:server-dist -- proofreading  # dist/text-tools-proofreading-server/<version>/ を生成
+npm run build:server-dist -- proofreading  # dist/writing-tools-proofreading-server/<version>/ を生成
 npm run deploy:server-dev -- proofreading  # 校正拡張の作業ディレクトリへ配置
 
-npm run build:server-dist -- translation   # dist/text-tools-translation-server/<version>/ を生成
+npm run build:server-dist -- translation   # dist/writing-tools-translation-server/<version>/ を生成
 npm run deploy:server-dev -- translation   # 翻訳拡張の作業ディレクトリへ配置
 ```
 
-配置後、Zed の設定に `lsp.text-tools.binary`／`lsp.text-tools-proofreading.binary`／
-`lsp.text-tools-translation.binary` を書かなければ自動解決されます（`npm run setup:example` が
+配置後、Zed の設定に `lsp.writing-tools.binary`／`lsp.writing-tools-proofreading.binary`／
+`lsp.writing-tools-translation.binary` を書かなければ自動解決されます（`npm run setup:example` が
 生成する設定は変換拡張の `binary` を明示するので、そちらを使う場合はプロジェクト内の `src/` を
 直接参照します。コード変更を都度配布物に反映せず素早く試したいときに向いています）。
 設定変更後、または配布物を再生成・再配置した後は言語サーバーの再起動
@@ -124,7 +124,7 @@ npm run deploy:server-dev -- translation   # 翻訳拡張の作業ディレク�
 
 ### 校正拡張（textlint 接続）
 
-`extension-proofreading/`（ID: `text-tools-proofreading`）が `src/engines/proofread.js` を
+`extension-proofreading/`（ID: `writing-tools-proofreading`）が `src/engines/proofread.js` を
 `.txt` に対して実行し、情報レベルの診断として返します。診断は既定で有効です
 （`initialization_options.diagnostics.enabled: false` で無効化できます）。ルールは
 [textlint-rule-preset-japanese](https://github.com/textlint-ja/textlint-rule-preset-japanese)
@@ -146,7 +146,7 @@ kuromoji 0.1.2 への[固定パッチ](patches/README.md)で、トークン位�
 
 校正拡張は変換の Code Action を提供しません（`transformations: []`）。逆に変換拡張は
 `inspections: []` で、校正エンジン（textlint）を import しないため依存を読み込みません。
-両拡張は別の言語サーバー ID（`text-tools`／`text-tools-proofreading`）を持つため、
+両拡張は別の言語サーバー ID（`writing-tools`／`writing-tools-proofreading`）を持つため、
 同時に導入しても機能は重複しません。
 
 `src/lsp/diagnostics.js` は、文書ごとの検査の集約・古い結果の破棄・診断の消去・失敗時の
@@ -156,7 +156,7 @@ kuromoji 0.1.2 への[固定パッチ](patches/README.md)で、トークン位�
 
 ### 翻訳拡張（DeepL 接続）
 
-`extension-translation/`（ID: `text-tools-translation`）が選択範囲を DeepL API で翻訳し、
+`extension-translation/`（ID: `writing-tools-translation`）が選択範囲を DeepL API で翻訳し、
 その場で置き換えます。「DeepLで日本語に翻訳」「DeepLで英語に翻訳」（`EN-US`）の 2 つの
 Code Action を提供します。翻訳元言語は DeepL 側の自動判定に任せます（`source_lang` を送りません）。
 
@@ -257,7 +257,7 @@ Node 標準の `fetch`／`AbortSignal` を直接使う実装を採用しまし�
 
 Copyright (C) 2026 Sayawaka
 
-本プロジェクト（`extension/`・`extension-proofreading/`・`extension-translation/`・`src/`・`scripts/` 以下の
+本プロジェクト（`extension-conversion/`・`extension-proofreading/`・`extension-translation/`・`src/`・`scripts/` 以下の
 オリジナルコード）は [GNU General Public License v3.0 以降](LICENSE)（GPL-3.0-or-later）の
 もとで配布します。全文は [`LICENSE`](LICENSE) を参照してください。
 
@@ -287,7 +287,7 @@ NAIST-2003 条件の独立データで、これも GPLv3 化の対象に含め�
 ### Corresponding Source（対応するソース）
 
 GPLv3 で必須となる「対応するソース」は本リポジトリそのものです。ビルド対象の全ソース
-（`extension/`・`extension-proofreading/`・`src/`）、依存バージョンを固定する
+（`extension-conversion/`・`extension-proofreading/`・`src/`）、依存バージョンを固定する
 `package-lock.json`・`Cargo.lock`、kuromoji 0.1.2 への[固定パッチ](patches/README.md)、
 配布物を再現するビルド手順（本 README の「開発」節・「サーバー配布物と固定パスの解消」節）を
 すべて追跡しています。`dist/` 自体は生成物のため Git 対象外ですが、上記の手順で

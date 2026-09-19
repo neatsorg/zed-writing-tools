@@ -2,8 +2,65 @@
 
 作成日: 2026-09-18
 プロジェクト名・ディレクトリ名: `zed-writing-tools`（2026-09-19、仮称`zed-text-tools`から改称。
-npmパッケージ名・Cargoクレート名も追随。Zed拡張ID（`text-tools`/`text-tools-proofreading`/
-`text-tools-translation`）は実機に既にデプロイ済みのため変更していない）
+npmパッケージ名・Cargoクレート名も追随）。Zed拡張ID（`writing-tools`/`writing-tools-proofreading`/
+`writing-tools-translation`）も2026-09-20に`text-tools*`から改称し、実機（[redacted-host]）の開発用拡張を
+新IDで登録し直した（詳細は下部の日付エントリ参照）。変換拡張のディレクトリ名も同日、
+`extension/`から`extension-proofreading/`・`extension-translation/`と対称的な
+`extension-conversion/`に改称した。
+
+## 今後の作業順序と公開方針（2026-09-20、ユーザー合意）
+
+今後の進行は本節を優先する。下部の初期計画・「後段」という記述は着手当時の記録であり、
+完了済みの調査・実装をやり直さない。
+
+1. **字数カウントの実機確認を最初に行う。** 未保存の全文（画面外も含む）の文字数、
+   「現在カーソル行 / 文書の総行数」、ブロック数を確認する。行数は折り返しではなく改行に基づく。
+   ブロックは2個以上の連続改行で区切り、単一改行では分割せず、空ブロックは数えない。
+   編集、Undo/Redo、タブ切り替え、設定のオン・オフ、長文の反応、複数バッファでの非表示も確認する。
+2. **変換・日本語校正・DeepLの3拡張に、細かな機能スイッチを整備する。** 変換項目や校正ルール
+   （例：「ら抜き表現を指摘するか」）などを設定で切り替えられるようにする。
+   通常のZed拡張の設定方法に合わせ、設定ファイルを基本に、設定画面は公開APIの対応範囲を確認する。
+   校正ルールの無効化は表示だけでなく実行を止め、DeepLの無効化は外部送信を止める。
+3. **字数カウントの表示設定を整備する。** `settings.json` で有効・無効と表示項目を選択できることを
+   必須とする。既存の `status_bar.document_stats_button`（既定false）と
+   `status_bar.document_stats.items` / `separator` を実機検証し、設定例を整える。
+   項目の順序・ラベル指定はすでに実装されているため再実装せず確認する。任意ラベルの変更・追加は
+   対応可能な範囲とし、新しい集計項目を無制限に追加できる仕組みまでは要求しない。
+4. **文書統計を本家へPRし、並行してフォークでも維持する。** 「PRを出さず派生版だけにする」という
+   一度検討した案は採用しない。機能は既定オフとし、設定ファイルで有効化・カスタマイズできる形で
+   提案する。専用の設定GUI追加は今回の完成条件・PRの前提に含めない。
+   PRがマージされなくても、こちらで管理するフォークで機能を維持し、本家Zedの更新への追従を行う。
+   本家Zed側がフォークの保守を担当するという意味ではない。本家への採用は保証されない。
+   ソース公開とビルド済みアプリの配布は区別し、配布範囲は公開準備時に確定する。
+   フォークの準備が整ったらpushする。マージされた場合は取り込み後に重複パッチを整理する。
+5. **LSP拡張3種とサーバーのpush準備を整える。** 確定した設定仕様、README、導入手順、
+   サーバー取得先・バージョン、配布物、ライセンス表記を整合させる。
+
+文書統計の直近のレビュー対象は `zed-word-counter: 3a01574` と `zed-i18n: 263c50c`。
+設定変更時の即時集計の指摘は解消済み。適用結果9ファイルの一致とPythonテスト2件の成功を確認した。
+そのレビューではRustの再ビルド・GUI確認は行っていないため、実機確認完了とは扱わない。
+
+## Zed拡張IDの改称（2026-09-20）
+
+プロジェクト名を`zed-writing-tools`に改称した際（2026-09-19）、Zed拡張ID
+（`text-tools`/`text-tools-proofreading`/`text-tools-translation`）は[redacted-host]実機に既に
+開発用拡張として登録済みだったため変更を見送っていた。その後、ユーザーから「[redacted-host]側での
+再インストール（フォルダ指定）は自分でできる」と確認が取れたため、拡張IDも
+`writing-tools`/`writing-tools-proofreading`/`writing-tools-translation`に統一した。
+
+変更箇所: 各`extension.toml`の`id`・`[language_servers.*]`セクション名・`name`表示名、
+`extension*/src/lib.rs`の`SERVER_DIST_DIR`定数・構造体名・コメント中のsettings参照、
+`scripts/targets.js`の`extensionId`/`distDirName`、`scripts/setup-example.js`の例、
+`src/lsp/create-server.js`の`TRANSLATE_COMMAND`（`text-tools.translate`→`writing-tools.translate`）、
+`src/lsp/diagnostics.js`の診断`source`、関連テスト（`test/*.test.js`）、
+`README.md`／`docs/architecture.md`／`docs/dependency-licenses.tsv`／`docs/license-audit.md`の記述。
+
+[redacted-host]側では、リポジトリ配置を`/home/user/project/zed-text-tools`から
+`/home/user/project/zed-writing-tools`に更新し、`~/.config/zed/settings.json`の
+`lsp.text-tools*`キーと`language_servers`配列を`writing-tools*`に書き換えた。
+Zed本体の「開発用拡張のインストール」（3拡張分、フォルダ指定）はユーザー側で実施する
+（SSH経由のファイル配置だけでは`~/.local/share/zed/extensions/work/<id>/`への登録が
+反映されないため）。
 
 ## 文書統計（字数カウンター）の管理先について（2026-09-19）
 
@@ -491,4 +548,6 @@ https://iwe.md/docs/configuration/
 
 ## 次の担当者への依頼
 
-このファイルを読み、まず元の日本語校正拡張のエンジン・ルール構成とライセンスを確認し、最小実装に適した LSP ライブラリを選ぶ。その後、一つの開発用 Zed 拡張から一つのサーバーを起動し、「変換一つ＋診断一つ」の検証へ進む。字数の常時表示や Zed 本体の改造を初期スコープへ追加しない。
+冒頭の「今後の作業順序と公開方針（2026-09-20、ユーザー合意）」に沿い、まず字数カウントの実機確認から進める。
+変換・校正・翻訳のLSP拡張は本リポジトリ、文書統計の本体パッチは `../zed-word-counter`、
+多言語版への取り込みは `../zed-i18n` で扱う。初期のエンジン調査・LSP選定・拡張分割はやり直さない。
