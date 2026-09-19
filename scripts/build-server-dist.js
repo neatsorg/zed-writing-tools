@@ -208,6 +208,9 @@ const distPackageJson = {
   ),
 };
 await writeFile(path.join(distDir, 'package.json'), JSON.stringify(distPackageJson, null, 2) + '\n');
+// README の著作権・GPL-3.0-or-later 適用表示と GPL 本文を配布物にも保持する。
+await cp(path.join(projectRoot, 'LICENSE'), path.join(distDir, 'LICENSE'));
+await cp(path.join(projectRoot, 'README.md'), path.join(distDir, 'README.md'));
 await cp(path.join(projectRoot, 'package-lock.json'), path.join(distDir, 'package-lock.json'));
 await cp(path.join(projectRoot, 'src'), path.join(distDir, 'src'), { recursive: true });
 

@@ -185,6 +185,9 @@ Copyright (C) 2026 Sayawaka
 オリジナルコード）は [GNU General Public License v3.0 以降](LICENSE)（GPL-3.0-or-later）の
 もとで配布します。全文は [`LICENSE`](LICENSE) を参照してください。
 
+両サーバー配布物にも `LICENSE` と本 `README.md` を同梱し、ライセンス本文と
+著作権・GPL-3.0-or-later の適用表示を保持します。
+
 ```
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

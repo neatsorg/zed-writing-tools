@@ -3,9 +3,9 @@
 確認日: 2026-09-19。ユーザー方針: 本プロジェクトを GPLv3 とする。
 これは配布準備の技術的な調査記録であり、個別の法的適合性を保証するものではない。
 
-追記（2026-09-19）: 下記「未解決事項」のうち、CC-BY-3.0 依存経路の除去・
+追記（2026-09-19）: 下記の調査項目のうち、CC-BY-3.0 依存経路の除去・
 辞書表示の識別明確化・表示生成スクリプトの修正（npm 側・Rust 側とも）は対応済み。
-末尾の「現在の表示生成処理で修正が必要な点」の項目 6（GPLv3 本文・LICENSE 宣言・
+末尾の「表示生成・公開準備の対応履歴」の項目 6（GPLv3 本文・LICENSE 宣言・
 Corresponding Source の整備）も対応済み。詳細は各節に追記した。
 
 ## 結論
@@ -19,8 +19,8 @@ README 等へ実際の URL を反映することのみ。
 ## 対象と確認方法
 
 - 現在の生成済み配布物 `dist/text-tools-server/0.1.0` は npm 依存 6 件。
-- `dist/text-tools-proofreading-server/0.1.0` は npm 依存 241 件。
-  入れ子の `node_modules` も含む配置単位の件数。辞書は別途確認。
+- `dist/text-tools-proofreading-server/0.1.0` は npm 依存 110 配置、109 種（`name@version` の重複除外後）。
+  入れ子の `node_modules` も含む。両配布物を再生成して一覧を更新した。辞書は別途確認。
 - 両 Cargo プロジェクトを `cargo metadata --locked --offline` で確認。
   各 87 件の外部 crate。同じ依存集合。ホスト側のビルド依存・対象外プラットフォームも
   含む保守的な一覧であり、全件が Wasm にリンクされるという意味ではない。
@@ -33,6 +33,20 @@ README 等へ実際の URL を反映することのみ。
   がある。最終 Wasm 配布では crate 一覧だけでなく、この表示と WASI runtime の扱いも含める。
   Zed・Node の本体は今回のサーバー配布物に同梱していない。
 
+## 監査資料の管理
+
+`docs/dependency-licenses.tsv` と本書は Git 管理する。TSV は現行配布物の一覧、
+本書は判断根拠と対応履歴を記録する。削除済み依存を TSV に残さず、除去理由は本書に残す。
+依存本体を含む `node_modules/`・生成配布物の `dist/` は引き続き `.gitignore` 対象とする。
+Git 管理から除外することと、リリース資産への同梱は別であり、配布物の LICENSE・
+THIRD_PARTY_NOTICES・依存のライセンス表示は生成処理で保持する。
+
+依存変更時は両対象の `npm run build:server-dist -- <conversion|proofreading>` を実行し、
+配布物の `node_modules` をスコープ付きパッケージ・入れ子も含めて列挙して TSV を更新する。
+配置ごとに package.json の名前・版・ライセンス宣言と、直下の LICENSE/NOTICE 系ファイルを記録する。
+Cargo の依存変更時は `cargo metadata --locked --offline` で両拡張の一覧も更新する。
+今回の Cargo 行は依存変更がないため既存の調査結果を保持した。
+
 ## ライセンス別の判断
 
 | 対象 | 確認結果・扱い |
@@ -40,11 +54,8 @@ README 等へ実際の URL を反映することのみ。
 | 変換用 npm 6 件 | 全件 MIT。元の表示を保持して GPLv3 の本体と組み合わせる方針で問題は見つからない |
 | textlint・校正ルール等 | 大半は MIT。BSD-2/3-Clause、ISC、WTFPL、CC0 も含む。ライセンス本文・必要な帰属を保持する |
 | kuromoji、zed_extension_api 等 | Apache-2.0。GPLv3 と互換。パッチによる変更表示、ライセンス、該当 NOTICE の保持が必要 |
-| argparse | `Python-2.0` 表記。実ファイルは PSF と歴史的ライセンスの連結。名前だけを Python 2.0 初期版の非互換条件と取り違えない。実際の LICENSE を丸ごと保持する |
-| glob、lru-cache 等 5 件 | BlueOak-1.0.0。ライセンス提供元の FAQ は GPLv3 との組み合わせを認める見解。本文または指定リンクを保持する |
 | ICU4X、unicode-ident 等 | Unicode-3.0。GNU は GPL と互換と説明。`unicode-ident` は `(MIT OR Apache-2.0) AND Unicode-3.0` なので Unicode 条件を省略しない |
 | その他の Rust 依存 | MIT/Apache の選択式、Zlib 等。`OR` は選択可能、`AND` は両条件を満たす。Wasm 系の LLVM 例外付き選択式も、MIT 等の別選択肢と区別する |
-| format 0.2.2 | lock の license 欄が無くても無許諾ではない。package.json の旧 `licenses` 配列とソース・Readme で MIT 表記を確認 |
 
 互換性の根拠:
 
@@ -61,7 +72,7 @@ README 等へ実際の URL を反映することのみ。
 NAIST/ICOT 条件（[NAIST-2003 本文](https://spdx.org/licenses/NAIST-2003.html)）である。
 改変版を含む再配布の許可があり、著作権表示・条件・免責全文の保持を要求する。
 現行配布物には NOTICE.md 自体が残っているため、「辞書の表示が完全に欠落」とは判定しない。
-ただし集約 THIRD_PARTY_NOTICES では辞書を識別していない。
+当初は集約 THIRD_PARTY_NOTICES で辞書を識別していなかったが、以下の対応を実施済み。
 
 辞書を本体と一括して GPLv3 へ変更したと表示しない。独立データとして元条件を保ち、
 配布物の一覧に明示する。過去に ICOT の文言を巡る議論もあるため、一般的な BSD と
@@ -74,7 +85,7 @@ NOTICE ファイルの見出しを「NOTICE（同梱データ等への追加条�
 （`scripts/build-server-dist.js` の `findNoticeFile` 呼び出し部分）。個別パッケージ名を
 ハードコードせず、NOTICE ファイルを持つ全パッケージに同じ扱いを適用する汎用処理。
 
-### spdx-exceptions 2.5.0
+### spdx-exceptions 2.5.0（削除済み依存の対応履歴）
 
 CC-BY-3.0 の識別子リスト。README に Linux Foundation と Contributors の帰属表示がある。
 導入経路は `textlint → read-package-up → read-pkg → normalize-package-data →
@@ -86,21 +97,21 @@ GPL の派生物として組み込むことは区別が必要。提供者によ�
 [CC-BY-3.0 原文](https://creativecommons.org/licenses/by/3.0/legalcode.en)は、
 コレクション内でも元のライセンス・帰属表示等を保持することを要求する。
 
-推奨する解決方向は、CLI/設定探索を必要としない本サーバーでは `textlint` の高水準 API
-から `@textlint/kernel` の直接使用へ移行できるか検証し、この依存経路を配布物から外すこと。
+当初の対応方針は、CLI/設定探索を必要としない本サーバーで `textlint` の高水準 API
+から `@textlint/kernel` の直接使用へ移行し、この依存経路を配布物から外すことだった。
 
 対応済み（2026-09-19）: `src/engines/proofread.js` を `@textlint/kernel` の
 `TextlintKernel`／`TextlintKernelDescriptor` を直接使う実装に変更し、`textlint` パッケージ
 本体への依存を `package.json` から削除した。校正配布物を再ビルドして確認した結果、
 `spdx-exceptions`・`read-package-up`・`normalize-package-data` 等の依存経路一式が
-インストール対象から消え、npm 依存件数は 241 件から 111 件（`node_modules` 内、直下＋入れ子）
+インストール対象から消え、npm 依存件数は旧構成の 241 配置から現行の 110 配置（109 種、`node_modules` 内、直下＋入れ子）
 に減少した。CC-BY-3.0 データはこの配布物にもはや含まれない。
 
-## 現在の表示生成処理で修正が必要な点
+## 表示生成・公開準備の対応履歴
 
 1. 対応済み。`listInstalledPackages`（`scripts/build-server-dist.js`）を、直下だけでなく
    入れ子 `node_modules` も再帰的に列挙する実装に変更した。同一 `name@version` は
-   最初に見つかったものを使う（内容は同一のはず）。校正配布物は依存整理後で 109 件。
+   最初に見つかったものを使う（内容は同一のはず）。校正配布物は依存整理後で 109 種（110 配置の重複除外後）。
 2. 対応済み。`findLicenseFile` で LICENSE/LICENCE の大小文字・拡張子違いを広く受け付け、
    `findLicenseInReadme` で README 内の MIT 全文埋め込みも検出する。見つからない場合は
    `scripts/known-licenses/`（個別確認済み全文、25 件）で解決し、それでも無い場合は
@@ -132,6 +143,7 @@ GPL の派生物として組み込むことは区別が必要。提供者によ�
    ロックファイル・パッチ・ビルド手順で再現可能）を明記した。GitHub リポジトリ URL は
    未確定のため、README・LICENSE とも URL を含まない相対的な書き方にとどめている
    （リポジトリ名は `zed-japanese-writing-tools` を予定と共有を受けたが、公開時に別途反映）。
+   両サーバー配布物への `LICENSE`・`README.md` のコピーにより、GPL 本文と著作権・適用表示を保持する。
 
 本調査の項目 6（ライセンス付与・公開・Corresponding Source の整備）は完了した。
 残る対応は、GitHub リポジトリを実際に作成した時点で README 等に URL を反映することのみ。
