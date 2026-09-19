@@ -3,8 +3,8 @@
 // package.json の dependencies・配布物ディレクトリ名・拡張 ID・起動エントリーポイントを分ける。
 export const TARGETS = {
   conversion: {
-    extensionId: 'writing-tools',
-    distDirName: 'writing-tools-server',
+    extensionId: 'writing-tools-conversion',
+    distDirName: 'writing-tools-conversion-server',
     serverEntry: 'src/lsp/server.js',
     dependencies: ['vscode-languageserver', 'vscode-languageserver-textdocument', 'jaconv'],
   },

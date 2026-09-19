@@ -752,7 +752,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "zed-writing-tools"
+name = "zed-writing-tools-conversion"
 version = "0.1.0"
 dependencies = [
  "zed_extension_api",

@@ -18,7 +18,7 @@ README 等へ実際の URL を反映することのみ。
 
 ## 対象と確認方法
 
-- 現在の生成済み配布物 `dist/writing-tools-server/0.1.0` は npm 依存 6 件。
+- 現在の生成済み配布物 `dist/writing-tools-conversion-server/0.1.0` は npm 依存 6 件。
 - `dist/writing-tools-proofreading-server/0.1.0` は npm 依存 110 配置、109 種（`name@version` の重複除外後）。
   入れ子の `node_modules` も含む。両配布物を再生成して一覧を更新した。辞書は別途確認。
 - 両 Cargo プロジェクトを `cargo metadata --locked --offline` で確認。

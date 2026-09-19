@@ -23,7 +23,7 @@
   を受け取り、拡張ごとに異なる機能サブセットで起動できます。
 - `src/lsp/server.js`: 変換拡張のエントリーポイント。`src/lsp/proofreading-server.js`: 校正拡張の
   エントリーポイント。`src/lsp/translation-server.js`: 翻訳拡張のエントリーポイント。
-- `extension-conversion/`: 変換用の Zed 拡張（ID: `writing-tools`）。
+- `extension-conversion/`: 変換用の Zed 拡張（ID: `writing-tools-conversion`）。
   `extension-proofreading/`: 校正用の Zed 拡張（ID: `writing-tools-proofreading`）。
   `extension-translation/`: 翻訳用の Zed 拡張（ID: `writing-tools-translation`）。
 
@@ -86,12 +86,12 @@ Undo など各操作の個別の確認結果は未記録です。
 
 ### サーバー配布物と固定パスの解消
 
-Zed 拡張は `lsp.writing-tools.binary.path`／`arguments` の明示設定を優先しますが、
+Zed 拡張は `lsp.writing-tools-conversion.binary.path`／`arguments` の明示設定を優先しますが、
 未設定の場合は次のように自動解決します。
 
 - Node 実行パス: Zed が使う Node（`node_binary_path()`）。
 - サーバー本体: 拡張の作業ディレクトリ（`~/.local/share/zed/extensions/work/<拡張 ID>/` など）
-  配下の配布物（変換拡張は `writing-tools-server/<version>/src/lsp/server.js`、
+  配下の配布物（変換拡張は `writing-tools-conversion-server/<version>/src/lsp/server.js`、
   校正拡張は `writing-tools-proofreading-server/<version>/src/lsp/proofreading-server.js`）。
 
 これにより、プロジェクトをどこに置いたか・`node` がどこにあるかに依存せず起動できます。
@@ -100,7 +100,7 @@ Zed 拡張は `lsp.writing-tools.binary.path`／`arguments` の明示設定を�
 `proofreading`）を引数に取ります。
 
 ```sh
-npm run build:server-dist -- conversion    # dist/writing-tools-server/<version>/ を生成
+npm run build:server-dist -- conversion    # dist/writing-tools-conversion-server/<version>/ を生成
 npm run deploy:server-dev -- conversion    # 変換拡張の作業ディレクトリへ配置
 
 npm run build:server-dist -- proofreading  # dist/writing-tools-proofreading-server/<version>/ を生成
@@ -110,7 +110,7 @@ npm run build:server-dist -- translation   # dist/writing-tools-translation-serv
 npm run deploy:server-dev -- translation   # 翻訳拡張の作業ディレクトリへ配置
 ```
 
-配置後、Zed の設定に `lsp.writing-tools.binary`／`lsp.writing-tools-proofreading.binary`／
+配置後、Zed の設定に `lsp.writing-tools-conversion.binary`／`lsp.writing-tools-proofreading.binary`／
 `lsp.writing-tools-translation.binary` を書かなければ自動解決されます（`npm run setup:example` が
 生成する設定は変換拡張の `binary` を明示するので、そちらを使う場合はプロジェクト内の `src/` を
 直接参照します。コード変更を都度配布物に反映せず素早く試したいときに向いています）。
@@ -146,7 +146,7 @@ kuromoji 0.1.2 への[固定パッチ](patches/README.md)で、トークン位�
 
 校正拡張は変換の Code Action を提供しません（`transformations: []`）。逆に変換拡張は
 `inspections: []` で、校正エンジン（textlint）を import しないため依存を読み込みません。
-両拡張は別の言語サーバー ID（`writing-tools`／`writing-tools-proofreading`）を持つため、
+両拡張は別の言語サーバー ID（`writing-tools-conversion`／`writing-tools-proofreading`）を持つため、
 同時に導入しても機能は重複しません。
 
 `src/lsp/diagnostics.js` は、文書ごとの検査の集約・古い結果の破棄・診断の消去・失敗時の

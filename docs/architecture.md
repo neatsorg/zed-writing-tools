@@ -14,7 +14,7 @@ Zed での日本語執筆を支援する。文字変換・校正・翻訳のエ�
 
 ## 構成
 
-- 変換拡張（ID: `writing-tools`。`extension-conversion/`）: 変換エンジンのみを有効にしてサーバーを起動する。
+- 変換拡張（ID: `writing-tools-conversion`。`extension-conversion/`）: 変換エンジンのみを有効にしてサーバーを起動する。
 - 校正拡張（ID: `writing-tools-proofreading`。`extension-proofreading/`）:
   校正エンジンのみを有効にしてサーバーを起動する。
 - 翻訳拡張（ID: `writing-tools-translation`。`extension-translation/`）:
@@ -33,7 +33,7 @@ Zed での日本語執筆を支援する。文字変換・校正・翻訳のエ�
 import しないため、無関係な依存を読み込まない。3 拡張を同時に導入しても、
 機能が重複したり複数のサーバーが同じ範囲を検査したりしない。
 
-サーバー配布物も分ける。拡張ごとに配布物ディレクトリ名（`writing-tools-server`／
+サーバー配布物も分ける。拡張ごとに配布物ディレクトリ名（`writing-tools-conversion-server`／
 `writing-tools-proofreading-server`／`writing-tools-translation-server`）を分け、
 校正拡張の配布物にのみ textlint 系の依存を含める（`extension-conversion/src/lib.rs`・
 `extension-proofreading/src/lib.rs`・`extension-translation/src/lib.rs` 参照）。

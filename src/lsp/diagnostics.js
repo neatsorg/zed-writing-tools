@@ -22,7 +22,7 @@ export function createDiagnostics({ documents, publish, inspect, delay = 200, on
           range: { start: document.positionAt(finding.start), end: document.positionAt(finding.end) },
           message: finding.message,
           severity: DiagnosticSeverity.Information,
-          source: 'writing-tools',
+          source: 'writing-tools-conversion',
         })) });
       } catch {
         if (current()) {

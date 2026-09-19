@@ -1,10 +1,10 @@
 artifact	package	version	declared_license	location	license_notice_files
-writing-tools-server	jaconv	1.1.2	MIT	node_modules/jaconv	LICENSE
-writing-tools-server	vscode-jsonrpc	8.2.0	MIT	node_modules/vscode-jsonrpc	License.txt,thirdpartynotices.txt
-writing-tools-server	vscode-languageserver	9.0.1	MIT	node_modules/vscode-languageserver	License.txt,thirdpartynotices.txt
-writing-tools-server	vscode-languageserver-protocol	3.17.5	MIT	node_modules/vscode-languageserver-protocol	License.txt,thirdpartynotices.txt
-writing-tools-server	vscode-languageserver-textdocument	1.0.12	MIT	node_modules/vscode-languageserver-textdocument	License.txt,thirdpartynotices.txt
-writing-tools-server	vscode-languageserver-types	3.17.5	MIT	node_modules/vscode-languageserver-types	License.txt,thirdpartynotices.txt
+writing-tools-conversion-server	jaconv	1.1.2	MIT	node_modules/jaconv	LICENSE
+writing-tools-conversion-server	vscode-jsonrpc	8.2.0	MIT	node_modules/vscode-jsonrpc	License.txt,thirdpartynotices.txt
+writing-tools-conversion-server	vscode-languageserver	9.0.1	MIT	node_modules/vscode-languageserver	License.txt,thirdpartynotices.txt
+writing-tools-conversion-server	vscode-languageserver-protocol	3.17.5	MIT	node_modules/vscode-languageserver-protocol	License.txt,thirdpartynotices.txt
+writing-tools-conversion-server	vscode-languageserver-textdocument	1.0.12	MIT	node_modules/vscode-languageserver-textdocument	License.txt,thirdpartynotices.txt
+writing-tools-conversion-server	vscode-languageserver-types	3.17.5	MIT	node_modules/vscode-languageserver-types	License.txt,thirdpartynotices.txt
 writing-tools-proofreading-server	@kvs/env	2.2.2	MIT	node_modules/@kvs/env	LICENSE
 writing-tools-proofreading-server	@kvs/indexeddb	2.2.2	MIT	node_modules/@kvs/indexeddb	LICENSE
 writing-tools-proofreading-server	@kvs/node-localstorage	2.2.2	MIT	node_modules/@kvs/node-localstorage	LICENSE
