@@ -22,55 +22,17 @@ Zed での、とりわけ日本語の文書の入力・編集を支援するた�
 ファイルに紐づかないバッファは言語サーバーへ登録されません。よってこれらの拡張機能が処理できません（`register_buffer_with_language_servers`）。
 この制約は言語を `Plain Text` に選び直すだけでは解消できず、ファイルとしての保存が必要になります。
 
-ただZed 自体には未保存本文を保存・復元する機能があり、Hot Exit相当の動作も可能になっています。
-これを改善・拡張し、LSP 制約を無効化する方向性の模索を
-[未保存文書・永続メモの調査](docs/scratch-buffer-research.md)にまとめました。
-
-上記を踏まえつつ、ひとまず現状でこの不便を解消するために[Zed 公式の将来的な発展可能性を視野に入れたパッチ](https://github.com/neatsorg/zed-scratch-buffers)として
-まとめました。
+上記を踏まえつつ、ひとまず現状でこの不便を解消するために未保存バッファをバックグラウンドで`.txt`ファイルに保存し、
+LSPの機能が使えるようにした[Zed 本体へのパッチ](https://github.com/neatsorg/zed-scratch-buffers)をまとめました。
 そちらと併用すると、現状でも、未保存文書をこれらの拡張機能で処理対象にできます。
 詳しくはそちらをご覧ください。
 
 またプレーンテキスト以外の形式への対応方針は[設計方針](docs/architecture.md#対応形式と校正方法)を参照してください。
 
-## 構造
-
-- `src/engines/width.js`: 半角／全角の変換。文字列 → 文字列の純粋関数。LSP・Zed に依存しません。
-- `src/engines/kana.js`: ひらがな／カタカナの変換。同様に純粋関数。
-- `src/engines/proofread.js`: textlint（preset-japanese）による校正。同様に純粋な文字列入出力で、
-  LSP・Zed に依存しません。
-- `src/engines/deepl.js`: DeepL API による翻訳。同様に LSP・Zed に依存しない文字列入出力
-  （`translate(text, targetLang, signal)`）。認証・通信・エラー分類をここに閉じます。
-- `src/features/conversion.js`: 変換の機能 ID・表示名・変換関数の登録。
-- `src/features/proofreading.js`: 校正の機能登録。
-- `src/features/translation.js`: 翻訳の機能登録（対象言語ごとの Code Action・サイズ上限）。
-- `src/lsp/create-server.js`: 文書同期、UTF-16 位置、Code Action、Diagnostics、翻訳の実行
-  （`workspace/executeCommand`）を扱う LSP サーバー本体。`{ transformations, inspections, translations }`
-  を受け取り、拡張ごとに異なる機能サブセットで起動できます。
-- `src/lsp/server.js`: 変換拡張のエントリーポイント。`src/lsp/proofreading-server.js`: 校正拡張の
-  エントリーポイント。`src/lsp/translation-server.js`: 翻訳拡張のエントリーポイント。
-- `extension-conversion/`: 変換用の Zed 拡張（ID: `writing-tools-conversion`）。
-  `extension-proofreading/`: 校正用の Zed 拡張（ID: `writing-tools-proofreading`）。
-  `extension-translation/`: 翻訳用の Zed 拡張（ID: `writing-tools-translation`）。
-
-各拡張は他の機能のエンジンを import しないため、それぞれ無関係な依存を読み込みません
-（変換拡張は textlint・DeepL 通信のコードを読み込まない、翻訳拡張は textlint を読み込まない、等）。
-拡張は機能ごとに分かれていますが、LSP サーバー本体とエンジンは共通コードです。
-
-半角カナ／全角カナ、ひらがな／カタカナの変換は [jaconv](https://github.com/kazuhikoarase/jaconv)
-（MIT、依存なし）を利用します。半角カナの濁点・半濁点の結合（`ｶﾞ` ↔ `ガ`）は同ライブラリに委ねます。
-英数字・記号は自前のテーブルで変換し、記号変換は英数字・空白を対象外にします。
-
-共通サーバーに機能を追加する構成です。サーバーの標準入出力は標準 LSP であり、
-他のエディタからも起動できます。変換エンジンは単独で取り出せます。
-任意コマンドや動的プラグインの実行機構は導入していません。
-
-責務の境界、開発順序、単一リポジトリでの管理方針は [設計方針](docs/architecture.md) を参照してください。
-
 ## 導入（開発版）
 
-現在、本プログラムではサーバー配布物を自動取得しません。本リポジトリを取得した環境で各サーバーを
-生成していきます。
+現在、本プログラムは開発初期版であり、サーバー配布物を自動取得しません。本リポジトリをclone取得した環境で各サーバーを
+生成してください。
 
 `build:server-dist`／`deploy:server-dev` は対象名（`conversion``proofreading` など）を引数に取ります。
 ```sh
@@ -94,15 +56,11 @@ extension-proofreading/
 extension-translation/
 ```
 
-導入後は `.txt` ファイルを開くと各機能を利用できます。プロジェクトをどこに置いたかに依存せず起動できます。
+サーバーの再生成・再配置や設定変更後は `zed: restart language server` を実行します。
+以後は `.txt` ファイルを開くと各機能を利用できます。プロジェクトをどこに置いたかに依存せず起動できます。
 設定については[機能ごとの設定（項目・ルール単位の有効・無効）](#機能ごとの設定（項目・ルール単位の有効・無効）)をご覧ください。
-翻訳を使う場合は、Zed を起動する
-環境に `DEEPL_AUTH_KEY`（または `DEEPL_AUTH_KEY_OP_REF`）を設定してください。
 
-サーバーの再生成・再配置や設定変更後は `zed: restart language server` を実行します。これは開発版の
-導入手順であり、リリース配布物や自動更新の仕組みはまだありません。
-
-## 開発
+## 環境
 
 Node.js 22 以降、Rust と `wasm32-wasip2` ターゲットを使用します。
 
@@ -115,7 +73,7 @@ cargo build --manifest-path extension-conversion/Cargo.toml --target wasm32-wasi
 
 ## Zed での動作確認
 
-1. このプロジェクトを任意の場所に置き、`npm ci --ignore-scripts` と `npm run patch:deps` を実行します。
+1. 取得したこのプロジェクトを任意の場所に置き、`npm ci --ignore-scripts` と `npm run patch:deps` を実行します。
 2. `npm run setup:example` を実行します。現在の Node.js 実行パスとプロジェクトの
    配置先から、Git 対象外の `examples/.zed/settings.json` を生成します。
    既存ファイルは上書きしません。配置先を移動した場合は、既存設定を退避して再生成してください。
@@ -223,6 +181,40 @@ APIキーを記述する変数名の見本として`.env.example` を用意し�
 Zed はホームディレクトリで**ログインシェルを起動してその環境変数を読み取れ**ます。
 したがってたとえばzsh の場合、ログインシェルが読むのは `.zshenv`・`.zprofile` です。
 環境変数はこれらのファイル、または OS 側の `~/.config/environment.d/`に設定してください。
+
+## 構造
+
+- `src/engines/width.js`: 半角／全角の変換。文字列 → 文字列の純粋関数。LSP・Zed に依存しません。
+- `src/engines/kana.js`: ひらがな／カタカナの変換。同様に純粋関数。
+- `src/engines/proofread.js`: textlint（preset-japanese）による校正。同様に純粋な文字列入出力で、
+  LSP・Zed に依存しません。
+- `src/engines/deepl.js`: DeepL API による翻訳。同様に LSP・Zed に依存しない文字列入出力
+  （`translate(text, targetLang, signal)`）。認証・通信・エラー分類をここに閉じます。
+- `src/features/conversion.js`: 変換の機能 ID・表示名・変換関数の登録。
+- `src/features/proofreading.js`: 校正の機能登録。
+- `src/features/translation.js`: 翻訳の機能登録（対象言語ごとの Code Action・サイズ上限）。
+- `src/lsp/create-server.js`: 文書同期、UTF-16 位置、Code Action、Diagnostics、翻訳の実行
+  （`workspace/executeCommand`）を扱う LSP サーバー本体。`{ transformations, inspections, translations }`
+  を受け取り、拡張ごとに異なる機能サブセットで起動できます。
+- `src/lsp/server.js`: 変換拡張のエントリーポイント。`src/lsp/proofreading-server.js`: 校正拡張の
+  エントリーポイント。`src/lsp/translation-server.js`: 翻訳拡張のエントリーポイント。
+- `extension-conversion/`: 変換用の Zed 拡張（ID: `writing-tools-conversion`）。
+  `extension-proofreading/`: 校正用の Zed 拡張（ID: `writing-tools-proofreading`）。
+  `extension-translation/`: 翻訳用の Zed 拡張（ID: `writing-tools-translation`）。
+
+各拡張は他の機能のエンジンを import しないため、それぞれ無関係な依存を読み込みません
+（変換拡張は textlint・DeepL 通信のコードを読み込まない、翻訳拡張は textlint を読み込まない、等）。
+拡張は機能ごとに分かれていますが、LSP サーバー本体とエンジンは共通コードです。
+
+半角カナ／全角カナ、ひらがな／カタカナの変換は [jaconv](https://github.com/kazuhikoarase/jaconv)
+（MIT、依存なし）を利用します。半角カナの濁点・半濁点の結合（`ｶﾞ` ↔ `ガ`）は同ライブラリに委ねます。
+英数字・記号は自前のテーブルで変換し、記号変換は英数字・空白を対象外にします。
+
+共通サーバーに機能を追加する構成です。サーバーの標準入出力は標準 LSP であり、
+他のエディタからも起動できます。変換エンジンは単独で取り出せます。
+任意コマンドや動的プラグインの実行機構は導入していません。
+
+責務の境界、開発順序、単一リポジトリでの管理方針は [設計方針](docs/architecture.md) を参照してください。
 
 ## 技術選定の根拠
 
