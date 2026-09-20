@@ -13,24 +13,23 @@ Zed での、とりわけ日本語の文書の入力・編集を支援するた�
 ## 未保存の文書への対応状況
 
 一度でも`.txt`として保存済みのファイルに対する加筆・修正であれば、未保存のバッファがあっても LSP の
-文書同期でサーバーに届くため、この拡張機能で処理対象にできます。上書き保存せずに利用できます。
+文書同期でサーバーに届くため、この拡張機能で処理対象にできます。つまり上書き保存せずに機能を使うことができます。
 
 ただし、一度も保存していない `Untitled` の新規タブは別扱いです。2026-09-20 に確認した
-[Zed の実装](https://github.com/zed-industries/zed/blob/main/crates/project/src/lsp_store.rs)では、
-ファイルに紐づかないバッファは言語サーバーへ登録されません。
-（`register_buffer_with_language_servers`）。言語を `Plain Text` に選び直すだけでは
-この制約を解消できません。
+[Zed の実装](https://github.com/zed-industries/zed/blob/main/crates/project/src/lsp_store.rs)によると、
+ファイルに紐づかないバッファは言語サーバーへ登録されません。よってこれらの拡張機能が処理できません（`register_buffer_with_language_servers`）。
+この制約は言語を `Plain Text` に選び直すだけでは解消できず、ファイルとしての保存が必要になります。
 
-ただこの LSP 制約とは別に、Zed 自体には未保存本文を保存・復元する機能があります。
-自動言語判定の無効化、Hot Exit の改善 PR、固定名の永続メモを実現する案を
-[未保存文書・永続メモの調査](docs/scratch-buffer-research.md)にまとめています。
+ただZed 自体には未保存本文を保存・復元する機能があり、Hot Exit相当の動作も可能になっています。
+これを改善・拡張し、LSP 制約を無効化する方向性の模索を
+[未保存文書・永続メモの調査](docs/scratch-buffer-research.md)にまとめました。
 
-現状でこの不便を解消するために、[Zed 自体の拡張可能性を鑑みたパッチ](https://github.com/neatsorg/zed-scratch-buffers)として
-まとめています。
-そちらと併用すると、現状でも、未保存な文書でこれら拡張機能の処理対象にできます。
+上記を踏まえつつ、ひとまず現状でこの不便を解消するために[Zed 公式の将来的な発展可能性を視野に入れたパッチ](https://github.com/neatsorg/zed-scratch-buffers)として
+まとめました。
+そちらと併用すると、現状でも、未保存文書をこれらの拡張機能で処理対象にできます。
 詳しくはそちらをご覧ください。
 
-プレーンテキスト以外の形式への対応方針は[設計方針](docs/architecture.md#対応形式と校正方法)を参照してください。
+またプレーンテキスト以外の形式への対応方針は[設計方針](docs/architecture.md#対応形式と校正方法)を参照してください。
 
 ## 構造
 
