@@ -3,10 +3,10 @@
 開発初期版。`.txt`（Zed の `Plain Text`）に対して 3 つの機能を提供する拡張機能です。
 以下のすべて、またはそれぞれを個別の拡張機能としてインストール可能です。
 
-- 半角・全角の変換: 選択範囲の英数字・英字・数字・記号・半角カナ／全角カナ、ひらがな／カタカナを変換します。
-　機序はVSCodeの[Zenkaku-Hankaku](https://github.com/mo-san/Zenkaku-Hankaku)を参考にさせていただきました。多謝。  
+- 半角・全角の変換: 選択範囲の英数字・英字・数字・記号・半角カナ／全角カナ、ひらがな／カタカナを変換します。  
+機序はVSCodeの[Zenkaku-Hankaku](https://github.com/mo-san/Zenkaku-Hankaku)を参考にさせていただきました。多謝。
 - 日本語の校正: textlint（preset-japanese）による日本語校正を情報レベルの診断として表示します。  
-　機序はVSCodeの[テキスト校正くん](https://github.com/ics-creative/project-japanese-proofreading)を参考にさせていただきました。多謝。
+機序はVSCodeの[テキスト校正くん](https://github.com/ics-creative/project-japanese-proofreading)を参考にさせていただきました。多謝。
 - DeepL翻訳: 選択範囲を DeepL API で翻訳し置き換えます（APIキーが必要）。
 
 ## 未保存の文書への対応状況
