@@ -61,6 +61,36 @@ Zed から文書が届く必要があります。これはソース上の確認�
 
 責務の境界、開発順序、単一リポジトリでの管理方針は [設計方針](docs/architecture.md) を参照してください。
 
+## 導入（開発版）
+
+現在はサーバー配布物を自動取得しません。リポジトリを取得した環境で、各サーバーを
+生成してから Zed に3つの開発用拡張を個別にインストールします。
+
+```sh
+npm ci --ignore-scripts
+npm run patch:deps
+npm run build:server-dist -- conversion
+npm run deploy:server-dev -- conversion
+npm run build:server-dist -- proofreading
+npm run deploy:server-dev -- proofreading
+npm run build:server-dist -- translation
+npm run deploy:server-dev -- translation
+```
+
+Zed のコマンドパレットで `zed: install dev extension` を実行し、次のディレクトリを
+それぞれ1回ずつ選びます。
+
+```text
+extension-conversion/
+extension-proofreading/
+extension-translation/
+```
+
+導入後は `.txt` ファイルを開くと各機能を利用できます。翻訳を使う場合は、Zed を起動する
+環境に `DEEPL_AUTH_KEY`（または `DEEPL_AUTH_KEY_OP_REF`）を設定してください。サーバーの
+再生成・再配置や設定変更後は `zed: restart language server` を実行します。これは開発版の
+導入手順であり、リリース配布物や自動更新の仕組みはまだありません。
+
 ## 開発
 
 Node.js 22 以降、Rust と `wasm32-wasip2` ターゲットを使用します。
@@ -78,8 +108,10 @@ cargo build --manifest-path extension-conversion/Cargo.toml --target wasm32-wasi
 2. `npm run setup:example` を実行します。現在の Node.js 実行パスとプロジェクトの
    配置先から、Git 対象外の `examples/.zed/settings.json` を生成します。
    既存ファイルは上書きしません。配置先を移動した場合は、既存設定を退避して再生成してください。
-3. Zed の `zed: install dev extension` で、このプロジェクトの `extension` ディレクトリを選びます。
-   ビルドには Rust と `wasm32-wasip2` ターゲットが必要です。
+3. 「導入（開発版）」の手順で3つのサーバー配布物を生成・配置し、Zed の
+   `zed: install dev extension` で `extension-conversion/`、`extension-proofreading/`、
+   `extension-translation/` をそれぞれ選びます。ビルドには Rust と `wasm32-wasip2`
+   ターゲットが必要です。
 4. `examples` フォルダー自体を Zed のプロジェクトとして開きます。
 5. `width.txt` の `ABC123` を選択し、Code Actions（通常 `Ctrl+.`）から「英数字を全角に変換」を実行します。
 6. 前後の日本語・絵文字が保持されること、Undo で戻せること、未保存で加筆した文字も変換できることを確認します。
