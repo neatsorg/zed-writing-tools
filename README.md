@@ -81,8 +81,8 @@ npm run build:server-dist -- translation
 npm run deploy:server-dev -- translation
 ```
 
-Zed のコマンドパレットで `zed: install dev extension` を実行し、次のディレクトリを
-それぞれ1回ずつ選びます。
+Zed のコマンドパレットで `zed: install dev extension` を実行し、次のディレクトリから
+文字列変換、校正、翻訳のうちインストールしたい機能のものを選びます。すべて選べば、全拡張機能がインストールされます。
 
 ```text
 extension-conversion/
