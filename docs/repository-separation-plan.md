@@ -95,12 +95,12 @@ i18n への字数カウント移植とは別物。
 
 実機の調査結果（2026-09-20、ステップ1レビューで実機と照合）:
 
-- 対象アプリは `/home/user/opt/zed-i18/zed.app`。
-  別に `/home/user/.local/zed-preview.app` も存在する（Preview の版・稼働状況は未確認）。
+- 対象アプリはユーザー環境に配置した統合ビルド。
+  Preview版とは別の配置である（版・稼働状況は環境ごとに確認する）。
 - `dev.zed.Zed.desktop` と `dev.zed-i18n.Zed.desktop` は対象アプリを直接参照する。
   `dev.zed.Zed-Preview.desktop` は Preview を参照する。
-- 3拡張の配布物は `~/.local/share/zed/extensions/work/writing-tools-*/` にあり、各 `0.1.0` のみ。
-- `settings.json` 関連ファイルは現行1件と `.bak` 7件。バックアップは7世代。
+- 3拡張の配布物は Zed の開発用拡張作業ディレクトリにあり、各 `0.1.0` のみ。
+- `settings.json` 関連ファイルは現行と複数世代のバックアップを確認した。具体的な配置先や世代数は公開資料に記録しない。
 
 設定バックアップはアプリのロールバック用コピーを兼ねない。次の作業では、現行アプリ一式を
 別名で保全し、ランチャーと拡張の実体も記録する。上記は配置の確認であり、退避完了を意味しない。
@@ -251,16 +251,11 @@ DeepL の実送信を伴う検証は明示的な操作で行い、自動テス�
   ローカル `master` を `origin/master`（`b532fec`）へ fast-forward。
   旧ブランチ `fix/localized-menu-access-keys` はそのまま残置（未削除、`263c50c` のまま）。
 - **zed-word-counter**: HEAD `3a01574`、remote 未登録、作業ツリー clean。変更なし。
-- **zed-writing-tools**: HEAD `25b6154`、remote 未登録。未コミット変更は本書・HANDOFF.md・README・
-  architecture.md・scratch-buffer-research.md のみ（機能コードへの影響なし）。
-- **実機**: 対象 Zed は `/home/user/opt/zed-i18/zed.app`（v1.20.2 `7c451e6`）。
-  通常版・i18n の2種の `.desktop` がこのパスを参照し、Preview のエントリは
-  別に存在する `/home/user/.local/zed-preview.app` を参照する。3拡張の配布物は
-  `~/.local/share/zed/extensions/work/writing-tools-{conversion,proofreading,translation}/`
-  に `0.1.0` のみ配置。`settings.json` は現行とは別に7世代のバックアップが既存。
-  今回追加で、バイナリ差し替え前に戻せるコピーとして
-  `/home/user/opt/zed-i18/zed.app.backup-20260920-1.20.2-7c451e6`（332MB）を作成した。
-  `/home/user/opt/` 直下は root 所有で書き込み不可のため、user 所有の `zed-i18/` 配下に退避した。
+- **zed-writing-tools**: HEAD `25b6154`、remote 未登録。未コミット変更は本書・README・
+  architecture.md・scratch-buffer-research.md などの文書（機能コードへの影響なし）。
+- **実機**: 対象Zedはユーザー環境に配置したv1.20.2統合ビルド。3拡張の配布物を
+  開発用拡張として配置し、設定を反映してGUI確認を行った。配置先やバックアップの
+  詳細はこの公開資料には記録しない。
 
 レビュー結果: 退避ブランチが `263c50c` を保持し、通常作業の `master` はタグと同じ
 `b532fec2e938398b51b22a64b272ab26b8491931` で clean。字数カウント3コミットを含む

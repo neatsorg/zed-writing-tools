@@ -353,7 +353,7 @@ Copyright (C) 2026 Sayawaka
 オリジナルコード）は [GNU General Public License v3.0 以降](LICENSE)（GPL-3.0-or-later）の
 もとで配布します。全文は [`LICENSE`](LICENSE) を参照してください。
 
-両サーバー配布物にも `LICENSE` と本 `README.md` を同梱し、ライセンス本文と
+3種類のサーバー配布物にも `LICENSE` と本 `README.md` を同梱し、ライセンス本文と
 著作権・GPL-3.0-or-later の適用表示を保持します。
 
 ```
@@ -379,9 +379,12 @@ NAIST-2003 条件の独立データで、これも GPLv3 化の対象に含め�
 ### Corresponding Source（対応するソース）
 
 GPLv3 で必須となる「対応するソース」は本リポジトリそのものです。ビルド対象の全ソース
-（`extension-conversion/`・`extension-proofreading/`・`src/`）、依存バージョンを固定する
+（`extension-conversion/`・`extension-proofreading/`・`extension-translation/`・`src/`）、依存バージョンを固定する
 `package-lock.json`・`Cargo.lock`、kuromoji 0.1.2 への[固定パッチ](patches/README.md)、
 配布物を再現するビルド手順（本 README の「開発」節・「サーバー配布物と固定パスの解消」節）を
 すべて追跡しています。`dist/` 自体は生成物のため Git 対象外ですが、上記の手順で
 同一内容を再生成できます。リリースを GitHub Releases 等で配布する場合は、各リリースが
 対応するコミット／タグの本リポジトリの内容と一致するようにします。
+
+配布形態ごとの確認と、依存ソース・Rust標準ライブラリ通知を含むリリース手順は
+[docs/release-licensing.md](docs/release-licensing.md)を参照してください。

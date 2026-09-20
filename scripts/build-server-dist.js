@@ -28,7 +28,7 @@ const distDir = path.join(projectRoot, 'dist', target.distDirName, version);
 
 // LICENSE ファイルを持たない依存は、package.json の license（SPDX 識別子）から
 // scripts/license-texts/ の標準テキストを補う。著作権者プレースホルダー（<year> <owner> など）は
-// author／contributors／repository から推定した名前で置換する。標準テキストが用意されていない
+// 含むものは使わず、確認済みの実ファイルで補う。標準テキストが用意されていない
 // SPDX 識別子（未知のライセンス）は取りこぼしを防ぐためビルドを失敗させる。
 const licenseTextsDir = fileURLToPath(new URL('license-texts/', import.meta.url));
 const licenseTemplateCache = new Map();
@@ -74,9 +74,12 @@ async function resolveLicenseBySpdxField(pkg) {
 
 async function findNoticeFile(packageDir) {
   const entries = await readdir(packageDir, { withFileTypes: true }).catch(() => []);
-  const candidate = entries.find(entry => entry.isFile() && /^notice(\.|$)/i.test(entry.name));
-  if (!candidate) return null;
-  return readFile(path.join(packageDir, candidate.name), 'utf8').catch(() => null);
+  const candidates = entries.filter(entry => entry.isFile() &&
+    /^(notice(?:[._-]|$)|third[._-]?party[._-]?notices?(?:[._-]|$))/i.test(entry.name))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  if (!candidates.length) return null;
+  return (await Promise.all(candidates.map(async entry =>
+    `#### ${entry.name}\n\n${await readFile(path.join(packageDir, entry.name), 'utf8')}`))).join('\n\n');
 }
 
 // LICENSE・LICENCE の大小文字・拡張子違い（kuromoji の LICENSE-2.0.txt 等）を広く受け付ける。

@@ -118,7 +118,7 @@ export async function buildRustNotices(manifestPath) {
   }
   return (
     'Third-Party Notices (Rust dependencies)\n========================================\n\n' +
-    'This extension bundles the following third-party crates (compiled into the Wasm binary):\n\n' +
+    'The locked dependency graph includes the following crates (including build and non-target dependencies; this is not a binary composition report). Rust standard-library notices must be supplied separately for a Wasm release.\n\n' +
     summaryLines.join('\n') +
     '\n\n' +
     licenseSections.join('\n')

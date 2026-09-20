@@ -1,7 +1,7 @@
 Third-Party Notices (Rust dependencies)
 ========================================
 
-This extension bundles the following third-party crates (compiled into the Wasm binary):
+The locked dependency graph includes the following crates (including build and non-target dependencies; this is not a binary composition report). Rust standard-library notices must be supplied separately for a Wasm release.
 
 - adler2@2.0.1 (0BSD OR MIT OR Apache-2.0) https://github.com/oyvindln/adler2
 - anyhow@1.0.104 (MIT OR Apache-2.0) https://github.com/dtolnay/anyhow
