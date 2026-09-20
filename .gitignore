@@ -15,3 +15,9 @@ dist/
 !.env.example
 *.local.md
 examples/.zed/settings.json
+
+# エディタ・OS由来の一時ファイル
+*.bak
+*.orig
+*~
+*.swp
