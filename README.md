@@ -2,7 +2,9 @@
 
 開発初期版。Zed 上で拡張子`.txt`を持つ `Plain Text`に対して、 3 つの機能を提供する拡張機能です。  
 Zed での、とりわけ日本語の文書の入力・編集を支援するために作られました。  
+
 以下のすべて、またはそれぞれを個別の拡張機能としてインストール可能です。
+機能はZed のコードアクション（通常 `Ctrl+.`）として実行できます。
 
 - 半角・全角の変換: 選択範囲の英数字・英字・数字・記号・半角カナ／全角カナ、ひらがな／カタカナを変換します。  
 機序はVSCodeの[Zenkaku-Hankaku](https://github.com/mo-san/Zenkaku-Hankaku)を参考にさせていただきました。多謝。
@@ -67,20 +69,22 @@ Zed での、とりわけ日本語の文書の入力・編集を支援するた�
 
 ## 導入（開発版）
 
-現在はサーバー配布物を自動取得しません。リポジトリを取得した環境で、各サーバーを
-生成してから Zed に3つの開発用拡張を個別にインストールします。
+現在、本プログラムではサーバー配布物を自動取得しません。本リポジトリを取得した環境で各サーバーを
+生成していきます。
 
+`build:server-dist`／`deploy:server-dev` は対象名（`conversion``proofreading` など）を引数に取ります。
 ```sh
 npm ci --ignore-scripts
 npm run patch:deps
-npm run build:server-dist -- conversion
-npm run deploy:server-dev -- conversion
-npm run build:server-dist -- proofreading
-npm run deploy:server-dev -- proofreading
-npm run build:server-dist -- translation
-npm run deploy:server-dev -- translation
+npm run build:server-dist -- conversion    # dist/writing-tools-conversion-server/<version>/ を生成
+npm run deploy:server-dev -- conversion    # 変換拡張の作業ディレクトリへ配置
+npm run build:server-dist -- proofreading  # dist/writing-tools-proofreading-server/<version>/ を生成
+npm run deploy:server-dev -- proofreading  # 校正拡張の作業ディレクトリへ配置
+npm run build:server-dist -- translation   # dist/writing-tools-translation-server/<version>/ を生成
+npm run deploy:server-dev -- translation   # 翻訳拡張の作業ディレクトリへ配置
 ```
 
+サーバー生成が終わったら、Zed に3つの開発用拡張を個別に導入します。
 Zed のコマンドパレットで `zed: install dev extension` を実行し、次のディレクトリから
 文字列変換、校正、翻訳のうちインストールしたい機能のものを選びます。すべて選べば、全拡張機能がインストールされます。
 
@@ -90,9 +94,12 @@ extension-proofreading/
 extension-translation/
 ```
 
-導入後は `.txt` ファイルを開くと各機能を利用できます。翻訳を使う場合は、Zed を起動する
-環境に `DEEPL_AUTH_KEY`（または `DEEPL_AUTH_KEY_OP_REF`）を設定してください。サーバーの
-再生成・再配置や設定変更後は `zed: restart language server` を実行します。これは開発版の
+導入後は `.txt` ファイルを開くと各機能を利用できます。プロジェクトをどこに置いたかに依存せず起動できます。
+設定については[機能ごとの設定（項目・ルール単位の有効・無効）](#機能ごとの設定（項目・ルール単位の有効・無効）)をご覧ください。
+翻訳を使う場合は、Zed を起動する
+環境に `DEEPL_AUTH_KEY`（または `DEEPL_AUTH_KEY_OP_REF`）を設定してください。
+
+サーバーの再生成・再配置や設定変更後は `zed: restart language server` を実行します。これは開発版の
 導入手順であり、リリース配布物や自動更新の仕組みはまだありません。
 
 ## 開発
@@ -117,81 +124,21 @@ cargo build --manifest-path extension-conversion/Cargo.toml --target wasm32-wasi
    `extension-translation/` をそれぞれ選びます。ビルドには Rust と `wasm32-wasip2`
    ターゲットが必要です。
 4. `examples` フォルダー自体を Zed のプロジェクトとして開きます。
-5. `width.txt` の `ABC123` を選択し、Code Actions（通常 `Ctrl+.`）から「英数字を全角に変換」を実行します。
-6. 前後の日本語・絵文字が保持されること、Undo で戻せること、未保存で加筆した文字も変換できることを確認します。
+5. `width.txt` の `ABC123` を選択し、コードアクション（通常 `Ctrl+.`）から「英数字を全角に変換」を実行します。
+6. 前後の日本語・絵文字が保持されること、Undo で戻せること、未保存で加筆した文字も変換できることを確認してください。
 7. 同ファイル末尾の英字・数字・記号・カナ・ひらがな／カタカナのサンプルも選択して、
-   対応する Code Action（「英字を全角に変換」「記号を半角に変換」など）が個別に変換できることを確認します。
-   記号変換では空白が変換されないこと、カナ変換では濁点・半濁点が結合されることも確認します。
+   対応する コードアプション（「英字を全角に変換」「記号を半角に変換」など）が個別に変換できることを確認します。
+   記号変換では空白が変換されないこと、カナ変換では濁点・半濁点が結合されることも確認してください。
 
-別のフォルダーで利用する場合は生成された設定をそのフォルダーの `.zed/settings.json` に、
-全フォルダーで利用する場合は Zed のユーザー設定に、既存設定を保持して統合します。
-生成されたパスはローカル専用です。共有する設定ファイルにはコピーしないでください。
-接続先や設置先の作業メモは Git 対象外の `*.local.md` に保存します。
-
-サーバーは UTF-16 を明示し、バージョン付き編集を返します。選択後に文書が変更された場合、
-resolve 時点で変換を中止します。候補解決に対応しないクライアントには純粋なローカル変換のみ即時編集を返します。
-将来の DeepL のような副作用を持つ機能は候補表示時に実行しない設計とします。
-`workspace.workspaceEdit.documentChanges` 非対応のクライアントには変換候補を返しません。
-
-自動テストは stdio LSP を通して未保存の増分編集、絵文字・結合文字を含む位置、
-古い候補の拒否、無選択、対象外アクションを検証します。
-ユーザーから、Linux の多言語対応版 Zed 1.20.2 上で初期変換が正常に動作することを確認済みとの報告を受けています。
-Undo など各操作の個別の確認結果は未記録です。
-
-## 次の段階
-
-### サーバー配布物と固定パスの解消
-
-Zed 拡張は `lsp.writing-tools-conversion.binary.path`／`arguments` の明示設定を優先しますが、
-未設定の場合は次のように自動解決します。
-
-- Node 実行パス: Zed が使う Node（`node_binary_path()`）。
-- サーバー本体: 拡張の作業ディレクトリ（`~/.local/share/zed/extensions/work/<拡張 ID>/` など）
-  配下の配布物（変換拡張は `writing-tools-conversion-server/<version>/src/lsp/server.js`、
-  校正拡張は `writing-tools-proofreading-server/<version>/src/lsp/proofreading-server.js`）。
-
-これにより、プロジェクトをどこに置いたか・`node` がどこにあるかに依存せず起動できます。
-変換拡張・校正拡張は依存が異なる（校正拡張のみ textlint 系を持つ）ため、配布物も対象別に
-生成します。`build:server-dist`／`deploy:server-dev` は対象名（`conversion` または
-`proofreading`）を引数に取ります。
-
-```sh
-npm run build:server-dist -- conversion    # dist/writing-tools-conversion-server/<version>/ を生成
-npm run deploy:server-dev -- conversion    # 変換拡張の作業ディレクトリへ配置
-
-npm run build:server-dist -- proofreading  # dist/writing-tools-proofreading-server/<version>/ を生成
-npm run deploy:server-dev -- proofreading  # 校正拡張の作業ディレクトリへ配置
-
-npm run build:server-dist -- translation   # dist/writing-tools-translation-server/<version>/ を生成
-npm run deploy:server-dev -- translation   # 翻訳拡張の作業ディレクトリへ配置
-```
-
-配置後、Zed の設定に `lsp.writing-tools-conversion.binary`／`lsp.writing-tools-proofreading.binary`／
-`lsp.writing-tools-translation.binary` を書かなければ自動解決されます（`npm run setup:example` が
-生成する設定は変換拡張の `binary` を明示するので、そちらを使う場合はプロジェクト内の `src/` を
-直接参照します。コード変更を都度配布物に反映せず素早く試したいときに向いています）。
-設定変更後、または配布物を再生成・再配置した後は言語サーバーの再起動
-（コマンドパレット: `zed: restart language server`）が必要です。
-
-生成物・アーカイブは Git 対象外です。クローンした環境では上記コマンドで再生成できます。
-公開先が決まった後は、同じ生成手順を CI で実行し、拡張が起動時に GitHub Releases から
-同じ構成の配布物を取得・展開する処理を追加する予定です（未実装）。詳細は
-[設計方針](docs/architecture.md) を参照してください。
+別のフォルダーで利用する場合は生成された設定をそのフォルダーの `.zed/settings.json` に記述します。
+全フォルダーで利用する場合も同様で、 Zed のユーザー設定自体に設定を記述すれば使えるようになります。
 
 ### 機能ごとの設定（項目・ルール単位の有効・無効）
 
 3 拡張とも、`.zed/settings.json` の `lsp.<拡張 ID>.initialization_options` に設定を書きます。
-専用の設定 GUI は提供していません。Zed の公開拡張 API（2026-09 時点）には、拡張が独自の
-設定フォームや JSON Schema を提示する仕組みが無く
-（[zed-industries/zed#60648](https://github.com/zed-industries/zed/discussions/60648) で
-Configure UI が提案されたが、対応する [PR #60653](https://github.com/zed-industries/zed/pull/60653)
-はスクリーンショット等が無いまま 2026-07-09 にクローズ済み）、`settings.json` の直接編集が
-現状の唯一の手段です。設定変更後は言語サーバーの再起動
-（コマンドパレット: `zed: restart language server`）が必要です。
-
-無効化は表示を隠すだけでなく実行そのものを止めます（変換は該当項目を Code Action の候補から
-外して実行せず、校正はルールを textlint のカーネルへ渡す前に除外し、DeepL は
-`workspace/executeCommand` の実行時にも無効化設定を確認して外部送信そのものを止めます）。
+設定変更後は言語サーバーの再起動（コマンドパレット: `zed: restart language server`）が必要です。
+なお、機能を無効化すると、コードアクションのメニューから表示を隠すだけでなく、実行じたいがされなくなります。
+設定の記述は下記のようになります。
 
 **変換拡張**（`lsp.writing-tools-conversion.initialization_options`）:
 
@@ -200,19 +147,25 @@ Configure UI が提案されたが、対応する [PR #60653](https://github.com
   "conversion": {
     "enabled": true,
     "items": {
-      "width.full.alphanumeric": true,
-      "width.half.symbol": false
+      "width.full.alphanumeric": true,  //英数字を全角に変換
+      "width.half.alphanumeric": true,  //英数字を半角に変換
+      "width.full.alpha": true,  //英字を全角に変換
+      "width.half.alpha": true,  //英字を半角に変換
+      "width.full.digit": true,  //数字を全に変換
+      "width.half.digit": true,  //数字を半角に変換
+      "width.full.symbol": true,  //記号を全角に変換
+      "width.half.symbol": true,  //記号を半角に変換
+      "width.full.kana": false,  //カタカナを全角に変換
+      "width.half.kana": false,  //カタカナを半角に変換
+      "kana.hiragana": false,  //カタカナをひらがなに変換
+      "kana.katakana": false  //ひらがなをカタカナに変換
     }
   }
 }
 ```
 
-`enabled: false` で拡張全体を無効化します。`items` は個別の変換項目（Code Action の内部 ID）を
-`false` にしたものだけを無効化し、指定しなかった項目・`true` にした項目は有効のままです。
-ID は `src/features/conversion.js` の一覧（`width.full.alphanumeric`・`width.half.alphanumeric`・
-`width.full.alpha`・`width.half.alpha`・`width.full.digit`・`width.half.digit`・
-`width.full.symbol`・`width.half.symbol`・`width.full.kana`・`width.half.kana`・
-`kana.hiragana`・`kana.katakana`）を参照してください。
+`"enabled": false` で拡張全体を無効化します。
+各設定項目で`true``false`を記述することで有効と無効を切り替えられます。
 
 **校正拡張**（`lsp.writing-tools-proofreading.initialization_options`）:
 
@@ -221,17 +174,25 @@ ID は `src/features/conversion.js` の一覧（`width.full.alphanumeric`・`wid
   "diagnostics": {
     "enabled": true,
     "rules": {
-      "no-dropping-the-ra": false
+      "max-ten": false,  //多すぎる読点を検出
+      "no-doubled-conjunctive-particle-ga": true,  //逆接の接続助詞の連続を検出
+      "no-doubled-conjunction": true,  //接続詞の連続を検出
+      "no-double-negative-ja": false,  //二重否定を検出
+      "no-doubled-joshi": true,  //同じ助詞の連続を検出
+      "sentence-length": false,  //1行が長すぎる場合に警告
+      "no-dropping-the-ra": false,  //ら抜き表現の検出
+      "no-mix-dearu-desumasu": false,  //である・ですます体の混合を検出
+      "no-nfd": false,  //濁点の分離を検出
+      "no-invalid-control-character": true,  //不正な制御文字の検出
+      "no-zero-width-spaces": true,  //ゼロ幅スペース検出
+      "no-kangxi-radicals": true  //康煕部首の検出
     }
   }
 }
 ```
 
-`rules` は [preset-japanese](https://github.com/textlint-ja/textlint-rule-preset-japanese) の
-ルール名（例: 「ら抜き表現を指摘するか」に対応する `no-dropping-the-ra`）をキーにし、`false` に
-したルールだけをスキップします。診断メッセージ末尾の `（preset-japanese/<ルール名>）` がそのまま
-キーに使えます。文書サイズが 30000 字を超えた場合の重いルールの自動スキップ（下記）とは独立に働き、
-両方の条件に該当するルールは当然実行されません。
+校正のうち文単位で解析する 5 ルール（max-ten・no-doubled-conjunctive-particle-ga・
+no-doubled-conjunction・no-doubled-joshi・sentence-length）は動作が重いタメ、文書サイズが 30000 字を超えた場合に自動スキップされます。
 
 **翻訳拡張**（`lsp.writing-tools-translation.initialization_options`）:
 
@@ -240,109 +201,28 @@ ID は `src/features/conversion.js` の一覧（`width.full.alphanumeric`・`wid
   "translation": {
     "enabled": true,
     "items": {
-      "deepl.en": false
+      "deepl.ja": true,  //日本語に翻訳
+      "deepl.en": false  //英語に翻訳
     }
   }
 }
 ```
 
-`items` は翻訳先言語ごとの Code Action（`deepl.ja`・`deepl.en`）を個別に無効化します。
-`enabled: false`（既存）は翻訳機能全体を無効化し、`workspace/executeCommand` の
-`executeCommandProvider` 自体を宣言しません。
-
-### 校正拡張（textlint 接続）
-
-`extension-proofreading/`（ID: `writing-tools-proofreading`）が `src/engines/proofread.js` を
-`.txt` に対して実行し、情報レベルの診断として返します。診断は既定で有効です
-（`initialization_options.diagnostics.enabled: false` で無効化できます）。ルールは
-[textlint-rule-preset-japanese](https://github.com/textlint-ja/textlint-rule-preset-japanese)
-の全 12 ルール（誤検知が少ないことを方針として明言するプリセット）。プロジェクトの
-`.textlintrc` 等は探索・読み込みません（同梱ルールのみで動作します）。
-
-このうち文単位で解析する 5 ルール（max-ten・no-doubled-conjunctive-particle-ga・
-no-doubled-conjunction・no-doubled-joshi・sentence-length）は文書サイズに対して超線形に
-遅くなるため、文書が 30000 字（UTF-16 コードユニット数）を超える場合はスキップします。
-絵文字や「𠮷」を含む文書でも形態素解析系の 7 ルールを実行します。
-kuromoji 0.1.2 への[固定パッチ](patches/README.md)で、トークン位置を UTF-16 にそろえ、
-連続するサロゲートペアを未知語としてまとめた際の長さ計算も修正しています。
-原文の置換や最終診断位置の一律変換は行いません。
-
-パッチは通常の npm インストール、`npm test`、`npm start` と校正配布物のビルドで適用します。
-`npm ci --ignore-scripts` の直後にサーバーを直接起動する場合は、先に `npm run patch:deps` を
-実行してください。未適用の校正サーバーは説明付きエラーで停止します。
-依存更新で対象バージョンやソースが変わった場合も、自動適用を止めて再確認を求めます。
-
-校正拡張は変換の Code Action を提供しません（`transformations: []`）。逆に変換拡張は
-`inspections: []` で、校正エンジン（textlint）を import しないため依存を読み込みません。
-両拡張は別の言語サーバー ID（`writing-tools-conversion`／`writing-tools-proofreading`）を持つため、
-同時に導入しても機能は重複しません。
-
-`src/lsp/diagnostics.js` は、文書ごとの検査の集約・古い結果の破棄・診断の消去・失敗時の
-復帰を扱う LSP アダプターで、校正エンジンとは独立してテストされています
-（`test/server.test.js` が `test/fixtures/` のテスト専用ダミー検査エンジンを注入して検証。
-製品コードにテスト用の分岐は追加していません）。
-
-### 翻訳拡張（DeepL 接続）
-
-`extension-translation/`（ID: `writing-tools-translation`）が選択範囲を DeepL API で翻訳し、
-その場で置き換えます。「DeepLで日本語に翻訳」「DeepLで英語に翻訳」（`EN-US`）の 2 つの
-Code Action を提供します。翻訳元言語は DeepL 側の自動判定に任せます（`source_lang` を送りません）。
-
-**候補を表示するだけでは通信しません。** Code Action の一覧（`textDocument/codeAction`）には
-実行内容（LSP の `command`）だけを持たせ、実際の翻訳・DeepL への送信は、ユーザーがその
-Code Action を選択したときに送られる `workspace/executeCommand` の中でのみ行います
-（`src/lsp/create-server.js`）。変換のローカル処理と違い、副作用（外部送信・課金）を伴うため、
-この 2 つの経路を明確に分けています。翻訳は既定で有効です
-（`initialization_options.translation.enabled: false` で無効化できます）。
+`"enabled": false`がデフォルトで、翻訳機能全体が無効化されています。trueにすることで有効になります。
+「DeepLで日本語に翻訳」「DeepLで英語に翻訳」（`EN-US`）の 2 つの
+コードアクション を提供します。翻訳元言語は DeepL 側の自動判定に任せます（`source_lang` を送りません）。
 
 **APIキーの設定**: 環境変数 `DEEPL_AUTH_KEY` にご自身の DeepL APIキーを設定してから
-言語サーバー（Zed）を起動してください。`.zed/settings.json` やこのリポジトリにキーを
-書き込まないでください（`.env`／`.env.*` は Git 対象外です。変数名の見本として
-`.env.example` を用意していますが、実際の値はここにも書きません）。キー未設定のまま
-翻訳を実行すると、設定方法を案内するメッセージを表示します（サーバー自体は起動します）。
-送信先 URL はキー形式（Free プランは `:fx` で終わる）から自動判定し、固定です。設定で
-変更することはできません。
-
-Zed 公式ドキュメント（[Zed の環境変数について](https://zed.dev/docs/environment)）によれば、
-デスクトップランチャー等の GUI から起動した場合、Zed はホームディレクトリで**ログインシェルを
-起動してその環境変数を読み取り**ます。zsh の場合、ログインシェルが読むのは `.zshenv`・
-`.zprofile` で、対話シェル専用の `.zshrc` は読まれないことがあります。GUI 起動でも確実に
-届けたい場合は **`.zshrc` ではなく `.zprofile`**（または OS 側の `~/.config/environment.d/`）に
-設定してください。
-
-**1Password 等のシークレット管理ツールと組み合わせる場合**: `DEEPL_AUTH_KEY` の代わりに
-`DEEPL_AUTH_KEY_OP_REF` に 1Password の参照文字列（例:
-`op://Personal/<item>/<field>`。これ自体は秘密ではありません）を設定できます。この変数は
-非機密なので `.zprofile` に無条件で書いて構いません。実際の 1Password 認証（`op read` の実行）は
-**翻訳の Code Action を初めて実行した瞬間**まで遅延し、成功した値はその言語サーバープロセスが
-生きている間だけメモリに保持して使い回します（エディタ起動のたびに認証を求めると、翻訳を
-使わないセッションでも毎回認証が挟まってしまうため、あえて使用時まで遅延させています）。
-`DEEPL_AUTH_KEY` が設定されている場合はそちらを優先し、`op` は呼びません。
-[1Password CLI](https://developer.1password.com/docs/cli/) (`op`) がインストール・認証済みで
-`PATH` 上にある必要があります。
-
-**DeepL への送信について**: 選択した範囲のテキストは DeepL のサーバーへ送信されます。
-利用料金・上限、無料／有料プランごとのデータ取り扱いの違いは
+言語サーバー（Zed）を起動してください。利用料金・上限、無料／有料プランごとのデータ取り扱いの違いは
 [DeepL API の利用規約](https://www.deepl.com/en/pro-license)・
 [プライバシーポリシー](https://www.deepl.com/en/privacy)を確認してください。本プロジェクトの
 GPLv3 ライセンス（下記「ライセンス」節）とは別に、DeepL サービス自体の利用条件が適用されます。
 
-選択範囲のサイズは二段階で確認します。まず選択直後に生テキストのバイト数（約 100000 バイト）で
-早期に弾き（`src/lsp/create-server.js`。1Password 解決や通信を試みる前の安価なフィルタ）、
-次に実際に送信する JSON 本文のバイト数（約 120000 バイト）でも確認します（`src/engines/deepl.js`）。
-引用符や改行を多く含む原文は JSON エスケープで本文が膨らむため、後者が実質的な上限です
-（DeepL の 128KiB 制限に対する安全マージン）。自動分割は行いません。翻訳中に文書が変更された
-場合は結果を破棄します。`workspace/applyEdit` がクライアント側の都合で `applied: false` を
-返した場合も、黙って捨てず案内します（自動での再翻訳はしません）。同一文書への多重実行は
-抑止します。翻訳の無効化（`initialization_options.translation.enabled: false`）は候補の
-非表示だけでなく、`workspace/executeCommand` の実行時にも確認します。エラー（認証失敗・
-利用上限・混雑・タイムアウト・キー未設定・1Password 解決失敗等）は種別ごとに案内し、
-原文・訳文・APIキーはログに出しません。
-
-ここまで（任意フォルダーでの利用・変換機能の拡充・サーバー配布の整備・拡張分割・
-校正エンジンの接続・DeepL 翻訳の接続）を実施済みです。実機での DeepL 接続確認（GUI 起動時の
-環境変数到達、実キーでの動作、Undo の確認）はユーザー確認待ちです。
-詳しい完了条件は [設計方針](docs/architecture.md) に記載しています。
+APIキーを記述する変数名の見本として`.env.example` を用意しています。
+公式ドキュメント（[Zed の環境変数について](https://zed.dev/docs/environment)）によれば、
+Zed はホームディレクトリで**ログインシェルを起動してその環境変数を読み取れ**ます。
+したがってたとえばzsh の場合、ログインシェルが読むのは `.zshenv`・`.zprofile` です。
+環境変数はこれらのファイル、または OS 側の `~/.config/environment.d/`に設定してください。
 
 ## 技術選定の根拠
 
