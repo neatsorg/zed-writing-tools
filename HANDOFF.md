@@ -3,7 +3,7 @@
 作成日: 2026-09-18
 プロジェクト名・ディレクトリ名: `zed-writing-tools`（2026-09-19、仮称`zed-text-tools`から改称。
 npmパッケージ名・Cargoクレート名も追随）。Zed拡張ID（`writing-tools`/`writing-tools-proofreading`/
-`writing-tools-translation`）も2026-09-20に`text-tools*`から改称し、実機（[redacted-host]）の開発用拡張を
+`writing-tools-translation`）も2026-09-20に`text-tools*`から改称し、実機の開発用拡張を
 新IDで登録し直した（詳細は下部の日付エントリ参照）。変換拡張のディレクトリ名も同日、
 `extension/`から`extension-proofreading/`・`extension-translation/`と対称的な
 `extension-conversion/`に改称した。
@@ -71,7 +71,7 @@ npmパッケージ名・Cargoクレート名も追随）。Zed拡張ID（`writin
 自動テストを追加し、`npm test`は55件すべて成功（既存51件+新規4件）。README「機能ごとの設定」節と
 `docs/architecture.md`「機能ごとの細かい設定」節に詳細を記録した。
 
-[redacted-host]へ配置（rsync→`npm ci`→`npm run patch:deps`→[redacted-host]上でも55テスト成功→3対象の配布物を
+実機へ配置（rsync→`npm ci`→`npm run patch:deps`→実機上でも55テスト成功→3対象の配布物を
 再ビルド・再配置）し、`~/.config/zed/settings.json`の`lsp.*.initialization_options`に
 3拡張の全項目（変換12項目・校正12ルール・翻訳2項目）を明示的に`true`で書き出した状態
 （ユーザーが値を確認する手間を省くための依頼）で言語サーバーを再起動し、
@@ -80,8 +80,8 @@ npmパッケージ名・Cargoクレート名も追随）。Zed拡張ID（`writin
 ## Zed拡張IDの改称（2026-09-20）
 
 プロジェクト名を`zed-writing-tools`に改称した際（2026-09-19）、Zed拡張ID
-（`text-tools`/`text-tools-proofreading`/`text-tools-translation`）は[redacted-host]実機に既に
-開発用拡張として登録済みだったため変更を見送っていた。その後、ユーザーから「[redacted-host]側での
+（`text-tools`/`text-tools-proofreading`/`text-tools-translation`）は実機に既に
+開発用拡張として登録済みだったため変更を見送っていた。その後、ユーザーから「実機側での
 再インストール（フォルダ指定）は自分でできる」と確認が取れたため、拡張IDも
 `writing-tools`/`writing-tools-proofreading`/`writing-tools-translation`に統一した。
 
@@ -92,7 +92,7 @@ npmパッケージ名・Cargoクレート名も追随）。Zed拡張ID（`writin
 `src/lsp/diagnostics.js`の診断`source`、関連テスト（`test/*.test.js`）、
 `README.md`／`docs/architecture.md`／`docs/dependency-licenses.tsv`／`docs/license-audit.md`の記述。
 
-[redacted-host]側では、リポジトリ配置を`/home/user/project/zed-text-tools`から
+実機側では、リポジトリ配置を`/home/user/project/zed-text-tools`から
 `/home/user/project/zed-writing-tools`に更新し、`~/.config/zed/settings.json`の
 `lsp.text-tools*`キーと`language_servers`配列を`writing-tools*`に書き換えた。
 Zed本体の「開発用拡張のインストール」（3拡張分、フォルダ指定）はユーザー側で実施する
@@ -586,7 +586,7 @@ https://iwe.md/docs/configuration/
 ## 次の担当者への依頼
 
 冒頭の「今後の作業順序と公開方針（2026-09-20、ユーザー合意）」に沿う。1番目（字数カウントの実機確認）・
-2番目（変換・校正・DeepLの細かな機能スイッチ、[redacted-host]でのGUI確認済み）は完了。次は3番目
+2番目（変換・校正・DeepLの細かな機能スイッチ、実機でのGUI確認済み）は完了。次は3番目
 （字数カウントの表示設定整備、`status_bar.document_stats_button`等の実機検証）に進む。
 変換・校正・翻訳のLSP拡張は本リポジトリ、文書統計の本体パッチは `../zed-word-counter`、
 多言語版への取り込みは `../zed-i18n` で扱う。初期のエンジン調査・LSP選定・拡張分割はやり直さない。

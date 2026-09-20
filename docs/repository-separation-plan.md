@@ -3,7 +3,7 @@
 作成日: 2026-09-20
 
 本書は調査結果と実施手順。現時点では既存履歴の巻き戻し、新規リポジトリの作成、
-ビルド・[redacted-host] への配置・GitHub への push は行っていない。
+ビルド・実機への配置・GitHub への push は行っていない。
 
 ## 合意した方針
 
@@ -13,7 +13,7 @@
 - 組み合わせを管理する `zed-personal-build` を新設する。
   GitHub に置く場合も必ず private とし、公開する機能の必須依存にはしない。
 - 公開することと、アプリのビルド済み配布・拡張ストア登録は別工程とする。
-- 現行 [redacted-host] の動作を保ったまま分離し、代替ビルドを検証してから置き換える。
+- 現行の実機の動作を保ったまま分離し、代替ビルドを検証してから置き換える。
 
 ## 調査結果
 
@@ -89,11 +89,11 @@ i18n への字数カウント移植とは別物。
 1. 各リポジトリの HEAD、差分、remote、Zed の対象コミットを再記録する。
 2. i18n の現行 HEAD を名前付きの退避ブランチまたはタグで保持する。
    追跡対象外の重要ファイルも調査し、既存の `.cache/zed` は消さない。
-3. [redacted-host] の稼働中バイナリ、ランチャー、設定、拡張の配置とバージョンを記録する。
+3. 実機の稼働中バイナリ、ランチャー、設定、拡張の配置とバージョンを記録する。
    バイナリ差し替え前に戻せるコピーを用意する。秘密を含みうる設定はリポジトリへコミットしない。
 4. i18n の remote を fetch し、アクセスキー PR の取り込み状況と3コミットの公開状況を再確認する。
 
-[redacted-host] の調査結果（2026-09-20、ステップ1レビューで実機と照合）:
+実機の調査結果（2026-09-20、ステップ1レビューで実機と照合）:
 
 - 対象アプリは `/home/user/opt/zed-i18/zed.app`。
   別に `/home/user/.local/zed-preview.app` も存在する（Preview の版・稼働状況は未確認）。
@@ -115,7 +115,7 @@ sources.lock.toml
 scripts/prepare
 scripts/check
 scripts/build
-scripts/deploy-[redacted-host]
+scripts/deploy-local
 compat/                  # 組み合わせにだけ必要な調整差分
 docs/verification.md
 .gitignore
@@ -209,7 +209,7 @@ docs/verification.md
 異常終了では永続化済みの最新内容を復元できることを確認し、最後の未書き込み分まで無条件に保証しない。
 DeepL の実送信を伴う検証は明示的な操作で行い、自動テストではダミーを使用する。
 
-### 7. [redacted-host] への導入
+### 7. 実機への導入
 
 1. 個人用ビルドで、固定した組み合わせのアプリを生成する。
 2. 稼働中アプリと別の配置先に置き、まず別のテスト用ユーザーデータで起動確認する。
@@ -253,7 +253,7 @@ DeepL の実送信を伴う検証は明示的な操作で行い、自動テス�
 - **zed-word-counter**: HEAD `3a01574`、remote 未登録、作業ツリー clean。変更なし。
 - **zed-writing-tools**: HEAD `25b6154`、remote 未登録。未コミット変更は本書・HANDOFF.md・README・
   architecture.md・scratch-buffer-research.md のみ（機能コードへの影響なし）。
-- **[redacted-host]**: 対象 Zed は `/home/user/opt/zed-i18/zed.app`（v1.20.2 `7c451e6`）。
+- **実機**: 対象 Zed は `/home/user/opt/zed-i18/zed.app`（v1.20.2 `7c451e6`）。
   通常版・i18n の2種の `.desktop` がこのパスを参照し、Preview のエントリは
   別に存在する `/home/user/.local/zed-preview.app` を参照する。3拡張の配布物は
   `~/.local/share/zed/extensions/work/writing-tools-{conversion,proofreading,translation}/`
@@ -265,7 +265,7 @@ DeepL の実送信を伴う検証は明示的な操作で行い、自動テス�
 レビュー結果: 退避ブランチが `263c50c` を保持し、通常作業の `master` はタグと同じ
 `b532fec2e938398b51b22a64b272ab26b8491931` で clean。字数カウント3コミットを含む
 remote-tracking branch はない。既存 `.cache/zed` のディレクトリも保持されている。
-[redacted-host] の対象アプリと退避コピーは `diff -qr` で内容一致し、主実行ファイルの inode が異なり、
+実機の対象アプリと退避コピーは `diff -qr` で内容一致し、主実行ファイルの inode が異なり、
 リンク数も各1であることを確認した。主要な保全は完了している。
 「他版なし」「3ランチャーが同じ参照先」「バックアップ8世代」の記録は上記のとおり訂正した。
 今後の配置直前には、最近変更した設定も含む現行 `settings.json` を新たに退避する。
@@ -274,7 +274,7 @@ master への切替により、i18n ツールの通常作業ツリーから字�
 アーカイブブランチと生成済みキャッシュは保持し、独立パッチによる同等ビルドの再現は未検証。
 
 未実施（ステップ2以降）: `zed-personal-build` の新設、独立パッチによる取り込み経路の構築、
-`zed-scratch-buffers` の新設、組み合わせ検証、[redacted-host] への導入切り替え。
+`zed-scratch-buffers` の新設、組み合わせ検証、実機への導入切り替え。
 
 ## 分離完了の判定
 
@@ -282,4 +282,4 @@ master への切替により、i18n ツールの通常作業ツリーから字�
 2. 各機能は通常の Zed の固定コミットへ単独で適用・検証できる。
 3. 個人用ビルドが正本の固定リビジョンから全部入りアプリを再現できる。
 4. 翻訳・統合の調整だけが個人用ビルド側にあり、機能全体の二重管理がない。
-5. [redacted-host] で元の機能を維持し、旧版へ戻せる。
+5. 実機で元の機能を維持し、旧版へ戻せる。
