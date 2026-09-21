@@ -14,9 +14,11 @@ Each extension can be installed separately. Features are available through Zed C
 
 ## Installation
 
-Open Zed's Extension Gallery with `Ctrl+Shift+X` (macOS: `Cmd+Shift+X`), search for the extension you need, and install it.
+These extensions are not yet available in Zed's official Extension Gallery. For now, clone or download this repository and install the required extension as a development extension. See [Development](docs/development.md) for the steps.
 
-On the first language-server start, the extension automatically downloads the required server from the project's [GitHub Release](https://github.com/neatsorg/zed-writing-tools/releases). A network connection and permission to download the server are required.
+After the development extension is installed, it automatically downloads the required language server from the project's [GitHub Release](https://github.com/neatsorg/zed-writing-tools/releases) on its first start. A network connection and permission to download the server are required.
+
+Once an extension is accepted into the official registry, it will be installable from Zed's Extension Gallery with `Ctrl+Shift+X` (macOS: `Cmd+Shift+X`).
 
 For development or manual testing, see [Development](docs/development.md).
 
