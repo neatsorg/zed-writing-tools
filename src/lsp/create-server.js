@@ -37,8 +37,8 @@ function translationErrorMessage(error) {
 // 翻訳のような副作用（外部送信・課金）を伴う処理をこの経路に乗せると、候補を列挙しただけで実行されて
 // しまう。command は LSP 仕様上ユーザーが実際にアクションを選択したときにのみクライアントから呼ばれ、
 // onCodeAction・resolve の経路を一切通らないため、翻訳は必ずこちらを使う。
-export function createServer({ transformations, inspections, translations = [] }) {
-  const connection = createConnection();
+export function createServer({ transformations, inspections, translations = [], input = process.stdin, output = process.stdout }) {
+  const connection = createConnection(input, output);
   const documents = new TextDocuments(TextDocument);
   let enabled = true;
   let translationEnabled = true;

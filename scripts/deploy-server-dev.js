@@ -63,4 +63,4 @@ await rename(stagingDir, targetDir);
 await writeFile(path.join(distRoot, 'CURRENT_VERSION'), version + '\n');
 
 console.log(`Deployed ${target.distDirName}@${version} to ${targetDir}`);
-console.log('Zed で言語サーバーを再起動してください（コマンドパレット: zed: restart language server）。');
+console.log('Zedのステータスバーにある言語サーバーメニューから「すべてのサーバーを再起動」を実行してください。');

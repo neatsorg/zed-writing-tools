@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-wasip2
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Patch dependencies
+        run: npm run patch:deps
+
+      - name: Build server distributions
+        run: |
+          npm run build:server-dist -- conversion
+          npm run build:server-dist -- proofreading
+          npm run build:server-dist -- translation
+          npm run package:server-release -- conversion
+          npm run package:server-release -- proofreading
+          npm run package:server-release -- translation
+
+      - name: Build extensions
+        run: |
+          cargo build --manifest-path extension-conversion/Cargo.toml --target wasm32-wasip2 --release --locked
+          cargo build --manifest-path extension-proofreading/Cargo.toml --target wasm32-wasip2 --release --locked
+          cargo build --manifest-path extension-translation/Cargo.toml --target wasm32-wasip2 --release --locked
+
+      - name: Create checksums
+        run: sha256sum dist/release/*.tar.gz > dist/release/SHA256SUMS
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/release/* --generate-notes

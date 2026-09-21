@@ -11,9 +11,8 @@ import { TARGETS } from './targets.js';
 // 公開後は同じ内容を CI で生成し、リリース資産として GitHub Releases に添付する想定。
 //
 // 変換拡張と校正拡張は依存が異なる（校正拡張のみ textlint 系を持つ）ため、対象ごとに
-// package.json の dependencies を絞り込む（TARGETS は targets.js で定義）。ルートの
-// package-lock.json はそのまま使う（npm ci は package.json に無い依存は無視してインストール
-// しない。実機で確認済み）。
+// package.json の dependencies を絞り込む（TARGETS は targets.js で定義）。lockfile も
+// 対象ごとの package.json から生成し、ルートの package 名や対象外の依存を配布物に残さない。
 
 const targetName = process.argv[2];
 const target = TARGETS[targetName];
@@ -217,6 +216,7 @@ await cp(path.join(projectRoot, 'README.md'), path.join(distDir, 'README.md'));
 await cp(path.join(projectRoot, 'package-lock.json'), path.join(distDir, 'package-lock.json'));
 await cp(path.join(projectRoot, 'src'), path.join(distDir, 'src'), { recursive: true });
 
+execFileSync('npm', ['install', '--package-lock-only', '--ignore-scripts', '--offline'], { cwd: distDir, stdio: 'inherit' });
 execFileSync('npm', ['ci', '--omit=dev', '--ignore-scripts'], { cwd: distDir, stdio: 'inherit' });
 
 if (targetName === 'proofreading') {

@@ -13,6 +13,7 @@
     "test": "node --test test/*.test.js",
     "setup:example": "node scripts/setup-example.js",
     "build:server-dist": "node scripts/build-server-dist.js",
+    "package:server-release": "node scripts/package-server-release.js",
     "build:rust-notices": "node scripts/build-rust-notices.js extension-conversion/Cargo.toml extension-conversion/THIRD_PARTY_NOTICES && node scripts/build-rust-notices.js extension-proofreading/Cargo.toml extension-proofreading/THIRD_PARTY_NOTICES && node scripts/build-rust-notices.js extension-translation/Cargo.toml extension-translation/THIRD_PARTY_NOTICES",
     "deploy:server-dev": "node scripts/deploy-server-dev.js",
     "patch:deps": "node scripts/patch-kuromoji.js",

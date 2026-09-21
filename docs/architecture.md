@@ -108,8 +108,9 @@ LSP の `command`（`workspace/executeCommand`）経由に限定する。command
 4. 固定パスへの依存を解消し、サーバーの取得・起動・更新と配布を整える。
    Node 実行パスは Zed の `node_binary_path()`、サーバー本体は拡張の作業ディレクトリへ
    配置したバージョン付き配布物から解決する（`binary` の明示設定があれば優先）。
-   配布物の生成・配置は現在ローカルの npm スクリプトで行う。公開先が決まったら、
-   同じ生成手順を CI に、配置を拡張からの GitHub Releases 取得・展開に置き換える。
+   配布物は `scripts/package-server-release.js` と GitHub Actions でアーカイブ化し、
+   拡張は `zed::github_release_by_tag_name`／`zed::download_file` で対応する固定タグの
+   GitHub Release から初回起動時に取得・展開する。開発時は従来どおりローカル配置を優先できる。
 5. Zed 拡張を変換用・校正用に分割する（実施済み、2026-09-19）。`create-server.js` へ
    機能サブセットを注入する形を使い、`extension-proofreading/`（ID: `writing-tools-proofreading`）
    を新設した。`src/features.js` は `src/features/conversion.js`・`src/features/proofreading.js`

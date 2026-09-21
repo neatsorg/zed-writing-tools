@@ -1,6 +1,6 @@
 # リリース時のライセンス確認
 
-確認日: 2026-09-21。対象は `zed-writing-tools` のサーバー3種とWasm拡張2種。
+確認日: 2026-09-21。対象は `zed-writing-tools` のサーバー3種とWasm拡張3種。
 
 サーバー配布物は `npm run build:server-dist -- conversion|proofreading|translation` で生成する。
 各配布物には `LICENSE`、README、`package-lock.json`、依存の `THIRD_PARTY_NOTICES`、校正版では
