@@ -10,14 +10,43 @@ Zed 用の日本語文章作成支援拡張です。機能ごとに個別にイ�
 
 ## インストール
 
-現在、これらの拡張機能は Zed 公式の拡張機能ギャラリーにはまだ登録されていません。まず本リポジトリをcloneまたはダウンロードし、必要な拡張機能を開発版としてインストールしてください。手順は[開発手順](docs/development.md)を参照してください。
+現在、これらの拡張機能は Zed 公式の拡張機能ギャラリーにはまだ登録されていません。以下の手順で「開発用拡張機能」としてインストールしてください（公式登録後は不要になります）。
 
-開発版の拡張機能をインストールすると、初回起動時に必要な言語サーバーがプロジェクトの[GitHub Release](https://github.com/neatsorg/zed-writing-tools/releases)から自動取得されます。サーバー取得にはネットワーク接続とダウンロードの許可が必要です。
+### 1. 拡張機能本体をダウンロード
 
-公式レジストリへの登録が承認された後は、Zedの拡張機能画面（`Ctrl+Shift+X`、macOS は `Cmd+Shift+X`）から検索してインストールできるようになります。
+[GitHub Release](https://github.com/neatsorg/zed-writing-tools/releases/latest)から、使いたい機能の `writing-tools-<conversion|proofreading|translation>-extension-<version>.tar.gz` をダウンロードし、任意の場所に展開します。
 
-サーバー取得を許可しない設定やネットワーク環境では、拡張を利用できないことがあります。
-開発版を使うと強制導入できる場合があります。必要であれば[開発手順](docs/development.md)を参照してください。
+### 2. Rustツールチェインを用意する
+
+Zedは「開発用拡張機能」としてインストールする際、そのフォルダに`extension.wasm`が既にあっても関係なく、**必ずその場でソースから再ビルド**します。あらかじめ以下をインストールしてください。
+
+- [rustup](https://rustup.rs/)（`wasm32-wasip2`ターゲットが未導入でも、rustupさえ入っていればZedが自動で追加します）
+
+zshをお使いの場合、rustupインストーラーが`~/.zshenv`にも設定を追記するため、GUIランチャー経由で起動するZedからもそのまま認識されます。
+
+### 3. Zedにインストール
+
+Zedのメニュー「Zed」→「拡張機能」（既定のショートカット: `Ctrl+Shift+X`、macOSは`Cmd+Shift+X`）を開いて「開発用拡張機能をインストール」を選ぶか、コマンドパレットから `zed: install dev extension` を実行します。フォルダ選択画面で、手順1で展開した中の `extension.toml` があるフォルダを指定してください。
+
+その場でビルドが走るため、完了まで少し待ちます。
+
+### 4. 言語サーバーについて
+
+インストール後、初回のLSP起動時に、対応する言語サーバーが同じ[GitHub Release](https://github.com/neatsorg/zed-writing-tools/releases)から自動でダウンロードされます。ネットワーク接続とダウンロードの許可が必要です。
+
+ネットワークが制限された環境では、同じReleaseから `writing-tools-<name>-server-<version>.tar.gz` を手動でダウンロードし、次の場所に展開しておくことで自動ダウンロードを省略できます（任意）。
+
+```
+~/.local/share/zed/extensions/work/writing-tools-<name>/writing-tools-<name>-server/<version>/
+```
+
+### 公式ギャラリー登録後
+
+公式レジストリへの登録が承認された後は、Zedの拡張機能画面から検索してインストールできるようになります（この場合はRust環境は不要です）。
+
+---
+
+リポジトリをcloneしてサーバー・拡張機能をすべて自分でビルドする手順は[開発手順](docs/development.md)を参照してください。
 
 ## 既知の制限
 

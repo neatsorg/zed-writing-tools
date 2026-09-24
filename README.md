@@ -14,13 +14,43 @@ Each extension can be installed separately. Features are available through Zed C
 
 ## Installation
 
-These extensions are not yet available in Zed's official Extension Gallery. For now, clone or download this repository and install the required extension as a development extension. See [Development](docs/development.md) for the steps.
+These extensions are not yet available in Zed's official Extension Gallery. Until then, install them as "dev extensions" following the steps below (this will no longer be necessary once they're accepted into the registry).
 
-After the development extension is installed, it automatically downloads the required language server from the project's [GitHub Release](https://github.com/neatsorg/zed-writing-tools/releases) on its first start. A network connection and permission to download the server are required.
+### 1. Download the extension
 
-Once an extension is accepted into the official registry, it will be installable from Zed's Extension Gallery with `Ctrl+Shift+X` (macOS: `Cmd+Shift+X`).
+From the [GitHub Release](https://github.com/neatsorg/zed-writing-tools/releases/latest), download `writing-tools-<conversion|proofreading|translation>-extension-<version>.tar.gz` for the extension you want, and extract it anywhere.
 
-For development or manual testing, see [Development](docs/development.md).
+### 2. Set up a Rust toolchain
+
+When installing a dev extension, Zed always recompiles it from source — even if a prebuilt `extension.wasm` is already present in the folder. Install the following on the machine running Zed beforehand:
+
+- [rustup](https://rustup.rs/) (the `wasm32-wasip2` target is added automatically by Zed as long as rustup itself is present)
+
+If you use zsh, rustup's installer also appends its setup to `~/.zshenv`, so a Zed instance launched from a GUI launcher (not a terminal) will pick it up too.
+
+### 3. Install into Zed
+
+Open the Zed menu → Extensions (default shortcut: `Ctrl+Shift+X`, macOS: `Cmd+Shift+X`) and choose "Install Dev Extension", or run `zed: install dev extension` from the command palette. In the folder picker, select the folder from step 1 that contains `extension.toml`.
+
+Zed compiles it on the spot, so this may take a moment.
+
+### 4. About the language server
+
+After installation, on its first start the extension automatically downloads the matching language server from the same [GitHub Release](https://github.com/neatsorg/zed-writing-tools/releases). A network connection and permission to download are required.
+
+On a restricted network, you can skip this automatic download by manually downloading `writing-tools-<name>-server-<version>.tar.gz` from the same release and extracting it to:
+
+```
+~/.local/share/zed/extensions/work/writing-tools-<name>/writing-tools-<name>-server/<version>/
+```
+
+### After official registry acceptance
+
+Once accepted into the official registry, the extension will be installable by searching Zed's Extension Gallery — no Rust toolchain required in that case.
+
+---
+
+For building the server and extensions entirely from source (e.g. for development), see [Development](docs/development.md).
 
 ## DeepL API key
 
