@@ -1,6 +1,7 @@
 # リリース時のライセンス確認
 
 確認日: 2026-09-21。対象は `zed-writing-tools` のサーバー3種とWasm拡張3種。
+2026-09-25に、kuromoji/mecab-ipadic表記の補足とRust標準ライブラリ通知の追加を実施(追記は各項目内に記載)。
 
 サーバー配布物は `npm run build:server-dist -- conversion|proofreading|translation` で生成する。
 各配布物には `LICENSE`、README、`package-lock.json`、依存の `THIRD_PARTY_NOTICES`、校正版では
@@ -15,8 +16,15 @@ mecab-ipadic-2.7.0-20070801のNAIST条件をコード本体のGPLv3表示とは�
 しないこと。依存を更新した際は、この節が消えていないか再走査時に確認する。
 
 Wasm拡張は `npm run build:rust-notices` でCargo依存の通知を生成する。これはロックされた依存グラフの
-通知であり、実際のリンク内容を完全に表すものではない。Rust標準ライブラリ、WASI runtime、フォント、
-その他の資産を含むリリースでは、それぞれの通知も最終アーカイブに追加する。
+通知であり、実際のリンク内容を完全に表すものではない。3拡張とも`extension.toml`に`grammars`が無く
+tree-sitter文法のCコンパイル(wasi-sdk/clang)が発生しないため、WASI SDK関連の通知は現状不要。
+
+Rust標準ライブラリ・コンパイラランタイム(std/core/alloc、wasm32-wasip2向けpanic/unwind等)はCargoの
+依存グラフに現れず`build:rust-notices`のCargo解析だけでは収録されないため、`scripts/rust-toolchain-notice.txt`
+(rust-lang/rustのLICENSE-MIT・LICENSE-APACHE、2026-09-25取得)を`build-rust-notices.js`が生成物末尾に
+自動追記する形で別途対応済み。個別サブコンポーネントの完全な内訳はRustのリリースごとに変わりうるため
+複製せず、`COPYRIGHT`ファイルへの参照のみ記載している。フォント等の追加資産は現状同梱していないため
+該当なし(将来同梱する場合は都度追加で対応する)。
 
 GPLv3の対応するソースは、配布した版と一致する本リポジトリの全ソース、ロックファイル、パッチ、
 生成手順である。バイナリだけ、または生成済み `dist/` だけを公開して完了としない。リリースタグと

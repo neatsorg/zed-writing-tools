@@ -10,6 +10,7 @@ import { parseSpdxExpression } from './spdx-expression.js';
 // そのまま使える。0BSD は著作権者欄があるため crate 内のファイルが必須）。
 const licenseTextsDir = fileURLToPath(new URL('license-texts/', import.meta.url));
 const knownLicensesRustDir = fileURLToPath(new URL('known-licenses-rust/', import.meta.url));
+const rustToolchainNoticePath = fileURLToPath(new URL('rust-toolchain-notice.txt', import.meta.url));
 
 function hasCopyrightPlaceholder(template) {
   return /<year>|<copyright holders>|<owner>|\[yyyy\]|\[name of copyright owner\]|\bYEAR\b|\bAUTHOR\b/.test(template);
@@ -116,12 +117,16 @@ export async function buildRustNotices(manifestPath) {
     const body = sections.map(section => `### ${section.spdxId}\n\n${section.text.trim()}`).join('\n\n');
     licenseSections.push(`## ${pkg.name}@${pkg.version}\n\n${body}\n`);
   }
+  const rustToolchainNotice = await readFile(rustToolchainNoticePath, 'utf8');
+
   return (
     'Third-Party Notices (Rust dependencies)\n========================================\n\n' +
-    'The locked dependency graph includes the following crates (including build and non-target dependencies; this is not a binary composition report). Rust standard-library notices must be supplied separately for a Wasm release.\n\n' +
+    'The locked dependency graph includes the following crates (including build and non-target dependencies; this is not a binary composition report). See the "Rust standard library / toolchain runtime" section below for the statically linked Rust toolchain itself, which is not part of this dependency graph.\n\n' +
     summaryLines.join('\n') +
     '\n\n' +
-    licenseSections.join('\n')
+    licenseSections.join('\n') +
+    '\n' +
+    rustToolchainNotice
   );
 }
 

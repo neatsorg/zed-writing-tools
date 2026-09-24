@@ -1,6 +1,6 @@
 {
   "name": "zed-writing-tools-server",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "license": "GPL-3.0-or-later",
   "author": "Sayawaka",
@@ -14,6 +14,7 @@
     "setup:example": "node scripts/setup-example.js",
     "build:server-dist": "node scripts/build-server-dist.js",
     "package:server-release": "node scripts/package-server-release.js",
+    "package:extension-release": "node scripts/package-extension-release.js",
     "build:rust-notices": "node scripts/build-rust-notices.js extension-conversion/Cargo.toml extension-conversion/THIRD_PARTY_NOTICES && node scripts/build-rust-notices.js extension-proofreading/Cargo.toml extension-proofreading/THIRD_PARTY_NOTICES && node scripts/build-rust-notices.js extension-translation/Cargo.toml extension-translation/THIRD_PARTY_NOTICES",
     "deploy:server-dev": "node scripts/deploy-server-dev.js",
     "patch:deps": "node scripts/patch-kuromoji.js",

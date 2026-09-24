@@ -8,7 +8,7 @@ struct WritingToolsTranslation;
 
 const SERVER_DIST_DIR: &str = "writing-tools-translation-server";
 const SERVER_VERSION: &str = "0.1.0";
-const RELEASE_TAG: &str = "v0.1.0";
+const RELEASE_TAG: &str = "v0.1.1";
 const RELEASE_REPOSITORY: &str = "neatsorg/zed-writing-tools";
 const RELEASE_ASSET: &str = "writing-tools-translation-server-0.1.0.tar.gz";
 const SERVER_ENTRY: &str = "src/lsp/translation-server.js";

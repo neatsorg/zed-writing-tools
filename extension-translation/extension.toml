@@ -1,6 +1,6 @@
 id = "writing-tools-translation"
 name = "Writing Tools Translation"
-version = "0.1.0"
+version = "0.1.1"
 schema_version = 1
 authors = ["Sayawaka"]
 repository = "https://github.com/neatsorg/zed-writing-tools"

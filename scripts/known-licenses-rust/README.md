@@ -17,3 +17,13 @@ crate のソース（`~/.cargo/registry/src/.../<name>-<version>/`）に LICENSE
 （GPLv3 との互換性が明確、`docs/license-audit.md` 参照）、無ければ MIT を選ぶ。
 `AND` で結合された各項目は選択ではなく全項目を収録する（`unicode-ident` の
 `(MIT OR Apache-2.0) AND Unicode-3.0` は Apache-2.0 と Unicode-3.0 の両方）。
+
+## Rust標準ライブラリ本体について
+
+`../rust-toolchain-notice.txt`（このディレクトリの1つ上）に、Cargo依存グラフには現れない
+Rust標準ライブラリ・コンパイラランタイム(std/core/alloc、wasm32-wasip2向けpanic/unwind等)
+のライセンス通知を別途収録している。2026-09-25、rust-lang/rustリポジトリの
+`LICENSE-MIT`・`LICENSE-APACHE`から取得（著作権者: The Rust Project Contributors）。
+`build-rust-notices.js`が生成物の末尾に自動で追記する。個別サブコンポーネントの完全な内訳は
+参照先として`COPYRIGHT`ファイルのURLを記載するに留め、本文は複製していない
+(Rustのリリースごとに変わりうるため)。
