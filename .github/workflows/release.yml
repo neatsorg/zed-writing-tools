@@ -43,6 +43,13 @@ jobs:
           cargo build --manifest-path extension-conversion/Cargo.toml --target wasm32-wasip2 --release --locked
           cargo build --manifest-path extension-proofreading/Cargo.toml --target wasm32-wasip2 --release --locked
           cargo build --manifest-path extension-translation/Cargo.toml --target wasm32-wasip2 --release --locked
+          # 注意: `cargo build` は target/wasm32-wasip2/release/*.wasm を作るだけで、
+          # 拡張機能ルートの extension.wasm (npm run package:extension-release が要求する
+          # componentize済みのファイル) は生成しない。それは Zed の
+          # `zed: install dev extension` 実行時にのみ生成される。そのためCIでは
+          # 拡張機能のtar.gz化を行わない。手元でinstall dev extensionを実行して
+          # extension.wasmを回収し、`npm run package:extension-release` した上で
+          # `gh release upload` すること。
 
       - name: Create checksums
         run: sha256sum dist/release/*.tar.gz > dist/release/SHA256SUMS
