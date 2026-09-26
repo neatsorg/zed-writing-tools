@@ -74,7 +74,7 @@ Five sentence-level rules (`max-ten`, `no-doubled-conjunctive-particle-ga`, `no-
 
 ### Settings
 
-The enabled state and individual items or rules can be configured through `lsp.<extension-id>.initialization_options` in `settings.json`. After changing these settings, restart all language servers from the language-server menu in the status bar.
+The enabled state, diagnostic delay, and individual items or rules can be configured through `lsp.<extension-id>.initialization_options` in `settings.json`. Proofreading diagnostics use a 1000 ms delay by default; set `diagnostics.delay` to another non-negative integer to change it. After changing these settings, restart all language servers from the language-server menu in the status bar.
 
 See the [architecture notes](docs/architecture.md) for the configuration details and design rationale. The Japanese documentation also contains complete configuration examples in [README.ja.md](README.ja.md).
 

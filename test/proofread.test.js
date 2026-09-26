@@ -114,6 +114,7 @@ test('stdio LSP: proofreading extension enables diagnostics by default and offer
   // diagnostics.enabled を明示しない。校正拡張は既定で有効であるべき。
   await rpc.sendRequest('initialize', {
     processId: process.pid, rootUri: null,
+    initializationOptions: { diagnostics: { delay: 0 } },
     capabilities: {
       general: { positionEncodings: ['utf-8', 'utf-16'] },
       workspace: { workspaceEdit: { documentChanges: true } },
@@ -190,7 +191,7 @@ test('stdio LSP: proofreading extension diagnostics can be explicitly disabled',
   t.after(() => { rpc.dispose(); child.kill(); assert.equal(errors, ''); });
   await rpc.sendRequest('initialize', {
     processId: process.pid, rootUri: null,
-    initializationOptions: { diagnostics: { enabled: false } },
+    initializationOptions: { diagnostics: { enabled: false, delay: 0 } },
     capabilities: {},
   });
   await rpc.sendNotification('initialized', {});

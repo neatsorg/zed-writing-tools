@@ -1,7 +1,7 @@
 import { DiagnosticSeverity } from 'vscode-languageserver/node.js';
 
 // One job per URI. Identity guards also handle close/reopen with the same version.
-export function createDiagnostics({ documents, publish, inspect, delay = 200, onError = () => {} }) {
+export function createDiagnostics({ documents, publish, inspect, delay = 1000, onError = () => {} }) {
   const jobs = new Map();
   function cancel(uri) {
     const job = jobs.get(uri);

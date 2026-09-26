@@ -117,6 +117,7 @@ export DEEPL_AUTH_KEY="your-api-key"
 {
   "diagnostics": {
     "enabled": true,
+    "delay": 1000,
     "rules": {
       "max-ten": false,
       "no-doubled-conjunctive-particle-ga": true,
@@ -134,6 +135,10 @@ export DEEPL_AUTH_KEY="your-api-key"
   }
 }
 ```
+
+`delay` は、最後の編集から診断を開始するまでの待ち時間をミリ秒で指定します。
+既定値は `1000` です。全ルールを有効にしたまま入力中の再解析頻度を下げたい場合に利用できます。
+`0` 以上の整数以外を指定した場合は既定値に戻ります。
 
 **翻訳**（`lsp.writing-tools-translation.initialization_options`）:
 

@@ -4,6 +4,11 @@ import { makeEdit, selectedText } from './actions.js';
 import { createDiagnostics } from './diagnostics.js';
 
 const TRANSLATE_COMMAND = 'writing-tools.translate';
+const DEFAULT_DIAGNOSTIC_DELAY = 1000;
+
+function diagnosticDelay(value) {
+  return Number.isInteger(value) && value >= 0 ? value : DEFAULT_DIAGNOSTIC_DELAY;
+}
 
 // 翻訳プロバイダーのエラーを利用者向けの日本語メッセージへ変換する。エンジン実装
 // （src/engines/deepl.js の DeeplTranslationError）に依存させず、error.kind の有無だけで
@@ -73,6 +78,7 @@ export function createServer({ transformations, inspections, translations = [], 
         documents,
         publish: params => connection.sendDiagnostics(params),
         inspect: (text, signal) => inspections[0].inspect(text, signal, { disabledRuleNames }),
+        delay: diagnosticDelay(diagnosticsOptions?.delay),
         onError: message => connection.console.error(message),
       });
     }

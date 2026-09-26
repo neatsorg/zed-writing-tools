@@ -144,7 +144,7 @@ test('stdio LSP: diagnostics and conversion coexist via a test-only inspection e
   t.after(() => { rpc.dispose(); child.kill(); assert.equal(errors, ''); });
   await rpc.sendRequest('initialize', {
     processId: process.pid, rootUri: null,
-    initializationOptions: { diagnostics: { enabled: true } },
+    initializationOptions: { diagnostics: { enabled: true, delay: 0 } },
     capabilities: {
       general: { positionEncodings: ['utf-8', 'utf-16'] },
       workspace: { workspaceEdit: { documentChanges: true } },

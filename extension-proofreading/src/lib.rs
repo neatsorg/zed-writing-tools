@@ -7,10 +7,10 @@ use zed_extension_api::{self as zed, settings::LspSettings, Result};
 struct WritingToolsProofreading;
 
 const SERVER_DIST_DIR: &str = "writing-tools-proofreading-server";
-const SERVER_VERSION: &str = "0.1.1";
-const RELEASE_TAG: &str = "v0.1.1";
+const SERVER_VERSION: &str = "0.1.2";
+const RELEASE_TAG: &str = "v0.1.2";
 const RELEASE_REPOSITORY: &str = "neatsorg/zed-writing-tools";
-const RELEASE_ASSET: &str = "writing-tools-proofreading-server-0.1.1.tar.gz";
+const RELEASE_ASSET: &str = "writing-tools-proofreading-server-0.1.2.tar.gz";
 const SERVER_ENTRY: &str = "src/lsp/proofreading-server.js";
 
 fn server_path(work_dir: &Path) -> PathBuf {

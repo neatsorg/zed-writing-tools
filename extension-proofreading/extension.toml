@@ -1,6 +1,6 @@
 id = "writing-tools-proofreading"
 name = "Writing Tools Proofreading"
-version = "0.1.1"
+version = "0.1.2"
 schema_version = 1
 authors = ["Sayawaka"]
 repository = "https://github.com/neatsorg/zed-writing-tools"
